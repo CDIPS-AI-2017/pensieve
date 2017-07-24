@@ -1,8 +1,9 @@
 from __future__ import unicode_literals
 import spacy
 import os
+import textacy
 from collections import defaultdict
-
+from collections import Counter
 
 nlp = spacy.load('en')
 
@@ -37,7 +38,11 @@ class Doc(object):
         self.paragraphs = []
         for p in self.text.split('\n\n'):
             self.paragraphs.append(Paragraph(p, self.par_info))
-
+        
+        self.words = {'verbs':Counter(), 'names':Counter(), 'places':Counter() }
+        for p in self.paragraphs:
+            for key in p.words:
+                self.words[key] =self.words[key]+p.words[key]
 
 class Paragraph(object):
 
@@ -45,3 +50,21 @@ class Paragraph(object):
         self.doc = nlp(text)
         self.text = text
         self.mem_info = mem_info
+        self.words = self.build_words_dict()
+
+    def build_words_dict(self):
+        doc_verbs = Counter()
+        doc_names = Counter()
+        doc_places = Counter()
+        
+        main_verbs = textacy.spacy_utils.get_main_verbs_of_sent(self.doc)
+        names = textacy.extract.named_entities(self.doc,include_types ={'PERSON'})
+        places = textacy.extract.named_entities(self.doc,include_types ={'LOC'})        
+        for verb in main_verbs:
+            doc_verbs[verb.text]+=1
+        for name in names:
+            doc_names[name.text]+=1
+        for place in places:
+            doc_places[place.text] +=1    
+
+        return {'verbs':doc_verbs, 'names':doc_names, 'places':doc_places}
