@@ -7,6 +7,7 @@ setup(name='pensieve',
       author_email='sam.dixon@berkeley.edu',
       url='https://github.com/CDIPS-AI-2017/pensieve',
       license='Apache 2.0',
+      packages=['pensieve',],
       install_requires=[
           'spacy'
           ]
