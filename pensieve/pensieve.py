@@ -38,11 +38,16 @@ class Doc(object):
         self.paragraphs = []
         for p in self.text.split('\n\n'):
             self.paragraphs.append(Paragraph(p, self.par_info))
-        
-        self.words = {'times':Counter(), 'verbs':Counter(), 'names':Counter(), 'places':Counter(), 'objects':Counter()}
+
+        self.words = {'times': Counter(),
+                      'verbs': Counter(),
+                      'names': Counter(),
+                      'places': Counter(),
+                      'objects': Counter()}
         for p in self.paragraphs:
             for key in p.words:
-                self.words[key] =self.words[key]+p.words[key]
+                self.words[key] = self.words[key]+p.words[key]
+
 
 class Paragraph(object):
 
@@ -53,26 +58,24 @@ class Paragraph(object):
         self.words = self.build_words_dict()
 
     def build_words_dict(self):
-        doc_times = Counter()
-        doc_verbs = Counter()
-        doc_names = Counter()
-        doc_places = Counter()
-        doc_objects = Counter()
-
-        times =  textacy.extract.named_entities(self.doc,include_types ={'DATE', 'TIME', 'EVENT'})
+        words_dict = {'times': Counter(),
+                      'verbs': Counter(),
+                      'names': Counter(),
+                      'places': Counter(),
+                      'objects': Counter()}
+        times = textacy.extract.named_entities(self.doc, include_types=['DATE', 'TIME', 'EVENT'])
         main_verbs = textacy.spacy_utils.get_main_verbs_of_sent(self.doc)
-        names = textacy.extract.named_entities(self.doc,include_types ={'PERSON'})
-        places = textacy.extract.named_entities(self.doc,include_types ={'LOC','GPE','FACILITY'})
-        objects = textacy.extract.named_entities(self.doc,include_types ={'ORG', 'NORP', 'WORK_OF_ART', 'PRODUCT'})
+        names = textacy.extract.named_entities(self.doc, include_types=['PERSON'])
+        places = textacy.extract.named_entities(self.doc, include_types=['LOC', 'GPE', 'FACILITY'])
+        objects = textacy.extract.named_entities(self.doc, include_types=['ORG', 'NORP', 'WORK_OF_ART', 'PRODUCT'])
         for time in times:
-            doc_times[time.text]+=1
+            words_dict['times'][time.text] += 1
         for verb in main_verbs:
-            doc_verbs[verb.text]+=1
+            words_dict['verbs'][verb.text] += 1
         for name in names:
-            doc_names[name.text]+=1
+            words_dict['names'][name.text] += 1
         for place in places:
-            doc_places[place.text] +=1
-        for object in objects:
-            doc_objects[object.text]+=1
-
-        return {'times':doc_times, 'verbs':doc_verbs, 'names':doc_names, 'places':doc_places, 'objects':doc_objects}
+            words_dict['places'][place.text] += 1
+        for obj in objects:
+            words_dict['objects'][obj.text] += 1
+        return words_dict
