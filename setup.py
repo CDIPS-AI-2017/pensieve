@@ -9,6 +9,7 @@ setup(name='pensieve',
       license='Apache 2.0',
       packages=['pensieve',],
       install_requires=[
-          'spacy'
+          'spacy',
+          'textacy'
           ]
       )
