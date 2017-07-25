@@ -51,10 +51,10 @@ class Doc(object):
 
 class Paragraph(object):
 
-    def __init__(self, text, mem_info=defaultdict(list)):
+    def __init__(self, text, mem_info=None):
         self.doc = nlp(text)
         self.text = text
-        self.mem_info = mem_info
+        self.mem_info = mem_info if mem_info is not None else defaultdict(list)
         self.words = self.build_words_dict()
 
     def build_words_dict(self):
