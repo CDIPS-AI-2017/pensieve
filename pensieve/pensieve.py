@@ -27,6 +27,15 @@ class Corpus(object):
             docs.append(Doc(file_path))
         return docs
 
+    def find_character_paragraphs(self, character_name):
+        """
+        Find paragraphs in the corpus where character is mentioned.
+        TODO: We want to have some metric for selecting paragraphs that are
+        likely to be about the character, not paragraphs where they're
+        just mentioned.
+        """
+        pass
+
 
 class Doc(object):
 
@@ -58,6 +67,9 @@ class Paragraph(object):
         self.words = self.build_words_dict()
 
     def build_words_dict(self):
+        """
+        Use textacy to extract entities and main verbs from the paragraph.
+        """
         words_dict = {'times': Counter(),
                       'verbs': Counter(),
                       'names': Counter(),
@@ -79,3 +91,16 @@ class Paragraph(object):
         for obj in objects:
             words_dict['objects'][obj.text] += 1
         return words_dict
+
+    def culled_words_dict(self):
+        """
+        Determine the most important words of those collected.
+        """
+        pass
+
+    def words_dict_to_json(self):
+        """
+        Dump the words_dict to JSON using the mem schema
+        """
+        pass
+
