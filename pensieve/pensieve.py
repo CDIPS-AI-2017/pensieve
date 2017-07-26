@@ -45,7 +45,7 @@ class Doc(object):
         self.corp_id = corp_id
         self.par_info = {'time': corp_id}
         self.paragraphs = []
-        for p in self.text.split('\n\n'):
+        for p in self.text.split('\n'):
             self.paragraphs.append(Paragraph(p, self.par_info))
 
         self.words = {'times': Counter(),
