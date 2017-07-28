@@ -58,7 +58,8 @@ class Corpus(object):
         character_paragraphs  = self.find_character_paragraphs(character_name, density_cut)
         for doc_id in character_paragraphs:
             for para_id in character_paragraphs[doc_id]:
-                people, places, activities = self.docs[doc_id].paragraphs[para_id].culled_words_dict(self.docs[doc_id].words,character_name)
+                people, places, activities = self.docs[doc_id].paragraphs[para_id].culled_words_dict(self.docs[doc_id].words,
+                                                                                                     character_name,verb_cut,name_cut)
                 if len(activities) != 0:
                     memories.append( {'People':people,'Places':places,'Activity':activities } )
         return memories
@@ -118,7 +119,7 @@ class Paragraph(object):
             words_dict['objects'][obj.text] += 1
         return words_dict
 
-    def culled_words_dict(self, doc_words, character):
+    def culled_words_dict(self, doc_words, character, verb_cut, name_cut):
         """
         Determine the most important words of those collected.
         """
@@ -126,8 +127,8 @@ class Paragraph(object):
         for name in self.words['names']:
             if name != character: # All memories clearly include the character, so don't include it in mem object itself
                 mem_people.append(name)
-        mem_places, mem_objects = self.sanitized_places_and_objects(doc_words)
-        mem_activities = self.gen_mem_activity(doc_words)
+        mem_places, mem_objects = self.sanitized_places_and_objects(doc_words, name_cut)
+        mem_activities = self.gen_mem_activity(doc_words, verb_cut)
         return mem_people, mem_places, mem_activities
 
     def sanitized_places_and_objects(self, doc_words, freq_cut = 100):
@@ -156,7 +157,7 @@ class Paragraph(object):
         doc_verbs = dict(doc_words['verbs'].most_common(verbs_cut))
         main_verbs = textacy.spacy_utils.get_main_verbs_of_sent(self.doc)
         for verb in main_verbs:
-            if verb.text not in doc_verbs or doc_verbs[verb.text] < verbs_cut:
+            if (verb.text in doc_verbs) and (doc_verbs[verb.text] < verbs_cut):
                 # --- Getting the auxiliary verbs
                 span = textacy.spacy_utils.get_span_for_verb_auxiliaries(verb)
                 complex_verb = self.doc[span[0]].text
