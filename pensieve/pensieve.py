@@ -114,6 +114,7 @@ class Doc(object):
         self.paragraphs = []
         for p in self.text.split('\n'):
             self.paragraphs.append(Paragraph(p, self))
+        self.corpus = corpus
 
         self.words = {'times': Counter(),
                       'verbs': Counter(),
@@ -142,6 +143,7 @@ class Paragraph(object):
             culled_words: dictionary of words passing importance cuts
         """
         self.spacy_doc = nlp(text)
+        self.doc = doc
         self.text = text
         self.words = self.build_words_dict()
         self.culled_words = self.culled_words_dict()
@@ -248,6 +250,8 @@ class Paragraph(object):
         for name in self.words['names']:
             if name not in character:  # Ignore redundant mention of subject
                 mem_people.append(name)
+        if len(mem_people) == 0:
+            mem_people.append('alone')  # Some scenes have no other names
         mem_places, mem_objects = self.sanitize_places_and_objects(name_cut)
         mem_activities = self.gen_mem_activity(self.doc.words, verb_cut)
         culled_output = {'people': mem_people,
