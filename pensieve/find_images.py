@@ -1,5 +1,7 @@
 import pickle
 import requests
+from PIL import Image
+import urllib
 from .keys import BING_API_KEY
 from .image import upload_image
 
@@ -49,15 +51,32 @@ def store_best(search_results, n=1):
     return urls, success, full_key_names
 
 
-if __name__ == '__main__':
-    try:
-        with open('example_bing_result.pkl', 'rb') as f:
-            results_json = pickle.load(f)
-    except IOError:
-        results_json = search_bing_for_image('wand')
-        with open('example_bing_result.pkl', 'wb') as f:
-            pickle.dump(results_json, f)
+def view(urls):
+    """
+    View the images at url
 
-    results_list = results_json['value']
-    best_urls, _, _ = store_best(results_list, n=3)
-    print(best_urls)
+    Args:
+        urls: list of image urls to view
+
+    Returns:
+        None
+    """
+    for i, url in enumerate(urls):
+        resp = requests.get(url)
+        dat = urllib.request.urlopen(resp.url)
+        img = Image.open(dat)
+        img.show()
+
+if __name__ == '__main__':
+    # try:
+    #     with open('example_bing_result.pkl', 'rb') as f:
+    #         results_json = pickle.load(f)
+    # except IOError:
+    #     results_json = search_bing_for_image('wand')
+    #     with open('example_bing_result.pkl', 'wb') as f:
+    #         pickle.dump(results_json, f)
+
+    results_json = search_bing_for_image('Harry Potter')
+    results_list = results_json
+    best_urls = [r['contentUrl'] for r in results_list][:3]
+    view(best_urls)
