@@ -248,7 +248,7 @@ class Paragraph(object):
         for name in self.words['names']:
             if name not in character:  # Ignore redundant mention of subject
                 mem_people.append(name)
-        mem_places, mem_objects = self.sanitized_places_and_objects(name_cut)
+        mem_places, mem_objects = self.sanitize_places_and_objects(name_cut)
         mem_activities = self.gen_mem_activity(self.doc.words, verb_cut)
         culled_output = {'people': mem_people,
                          'places': mem_places,
