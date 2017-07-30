@@ -96,7 +96,7 @@ class Corpus(object):
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
         for par in char_pars:
-            memories.append(par.culled_words_dict(char, verb_cut, name_cut))
+            memories.append(par.gen_mem_dict(char, verb_cut, name_cut))
         return memories
 
 
@@ -198,7 +198,7 @@ class Doc(object):
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
         for par in char_pars:
-            memories.append(par.culled_words_dict(char_name, verb_cut, name_cut))
+            memories.append(par.gen_mem_dict(char_name, verb_cut, name_cut))
         return memories
 
 
