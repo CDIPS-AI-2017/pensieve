@@ -5,7 +5,6 @@ import textacy
 import _pickle as pickle
 from numpy.random import randint
 from collections import Counter
-from IPython import embed
 
 print('Loading spaCy...')
 NLP = spacy.load('en')
@@ -25,8 +24,8 @@ class Corpus(object):
             paragraphs: List of Paragraph objects from corpus
         """
         self.corpus_dir = corpus_dir
-        self.docs = None
-        self.paragraphs = None
+        self._docs = None
+        self._paragraphs = None
 
     @property
     def docs(self):
@@ -51,7 +50,6 @@ class Corpus(object):
         file_paths = [os.path.join(self.corpus_dir, f) for f in file_list]
         docs = []
         for i, file_path in enumerate(file_paths):
-            print('Loading '+file_path)
             docs.append(Doc(file_path, i, self))
         return docs
 
@@ -78,10 +76,10 @@ class Corpus(object):
                                                        density_cut)
         return char_pars
 
-    def build_corpus_memories(self, char_name, density_cut=0.8,
-                              verb_cut=500, name_cut=100):
+    def gather_corpus_memories(self, char_name, density_cut=0.8,
+                               verb_cut=500, name_cut=100):
         """
-        Builds memories from character paragraphs.
+        Collects memories from all character paragraphs in the corpus.
 
         Args:
             char_name: Name of character to build memories for
@@ -93,12 +91,12 @@ class Corpus(object):
             name_cut: like verb_cut, but for people, places, and things
 
         Returns:
-            memories: list of sanitized memories, ready to be put in DB
+            memories: list of memories, ready to be put in DB
         """
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
         for par in char_pars:
-            memories.append(par.culled_words_dict)
+            memories.append(par.words)
         return memories
 
 
@@ -123,31 +121,34 @@ class Doc(object):
         self.id = doc_id
         self.corpus = corpus
         self.text = open(path_to_text, 'r').read()
-        self.paragraphs = None
-        self.words = {'times': Counter(),
-                      'verbs': Counter(),
-                      'names': Counter(),
-                      'places': Counter(),
-                      'things': Counter(),
-                      'mood': None}
+        self._paragraphs = None
+        self._words = {'times': Counter(),
+                       'verbs': Counter(),
+                       'names': Counter(),
+                       'places': Counter(),
+                       'things': Counter(),
+                       'mood': None}
 
-    def read_paragraphs(self):
-        """
-        Update self.paragraphs and self.words attributes
+    @property
+    def paragraphs(self):
+        if not self._paragraphs:
+            print('Generating paragraphs for doc '+str(self.id))
+            self._paragraphs = []
+            for i, p in enumerate(self.text.split('\n')):
+                if len(p.split(' ')) < 30:
+                    continue
+                self._paragraphs.append(Paragraph(p, i, self))
+        return self._paragraphs
 
-        Args:
-            None
+    @property
+    def words(self):
+        if not self._words:
+            for par in self.paragraphs:
+                for key in par.words:
+                    self._words[key] = self._words[key]+par.words[key]
+        return self._words
 
-        Returns:
-            None
-        """
-        self.paragraphs = []
-        for i, p in enumerate(self.text.split('\n')):
-            if len(p.split(' ')) < 30:
-                continue
-            self.paragraphs.append(Paragraph(p, i, self))
-
-    def find_character_paragraphs(self, char_name, density_cut=0.4):
+    def find_character_paragraphs(self, char_name, density_cut=0.8):
         """
         Find paragraphs in the corpus where character is mentioned
         heavily.
@@ -165,8 +166,6 @@ class Doc(object):
         if isinstance(char_name, str):
             char_name = [char_name]
         char_pars = []
-        if self.paragraphs is None:
-            self.read_paragraphs()
         for par in self.paragraphs:
             n_sentences = len(list(par.spacy_doc.sents))
             if n_sentences == 0:
@@ -199,7 +198,7 @@ class Doc(object):
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
         for par in char_pars:
-            memories.append(par.culled_words_dict)
+            memories.append(par.culled_words_dict(char_name, verb_cut, name_cut))
         return memories
 
 
@@ -224,7 +223,6 @@ class Paragraph(object):
         self.id = par_id
         self.spacy_doc = NLP(text)
         self.words = self.build_words_dict()
-        self.culled_words_dict = None
 
     def build_words_dict(self):
         """
@@ -367,5 +365,4 @@ if __name__ == '__main__':
     print('Paragraph '+str(test_par.id))
     print(test_par.text)
     pprint(test_par.words)
-    # embed()
 
