@@ -98,7 +98,7 @@ class Corpus(object):
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
         for par in char_pars:
-            memories.append(par.gen_mem_dict(char, verb_cut, name_cut))
+            memories.append(par.gen_mem_dict(char_name, verb_cut, name_cut))
         return memories
 
 
@@ -124,12 +124,7 @@ class Doc(object):
         self.corpus = corpus
         self.text = open(path_to_text, 'r').read()
         self._paragraphs = None
-        self._words = {'times': Counter(),
-                       'verbs': Counter(),
-                       'names': Counter(),
-                       'places': Counter(),
-                       'things': Counter(),
-                       'mood': None}
+        self._words = None
 
     @property
     def paragraphs(self):
@@ -145,9 +140,14 @@ class Doc(object):
     @property
     def words(self):
         if not self._words:
+            self._words = {'times': Counter(),
+                           'verbs': Counter(),
+                           'names': Counter(),
+                           'places': Counter(),
+                           'things': Counter()}
             for par in self.paragraphs:
-                for key in par.words:
-                    self._words[key] = self._words[key]+par.words[key]
+                for key in self._words:
+                    self._words[key] += par.words[key]
         return self._words
 
     def find_character_paragraphs(self, char_name, density_cut=0.8):
@@ -339,9 +339,10 @@ class Paragraph(object):
                          'places': mem_places,
                          'activities': mem_activities,
                          'things': mem_things,
-                         'times': self.words['times'],
+                         'times': list(self.words['times']),
                          'mood': self.words['mood'],
-                         'img_url': self.words['img_url']}
+                         'img_url': self.words['img_url'],
+                         'narrative': self.text}
         return culled_output
 
     def search_for_images(self):
@@ -367,4 +368,3 @@ if __name__ == '__main__':
     print('Paragraph '+str(test_par.id))
     print(test_par.text)
     pprint(test_par.words)
-
