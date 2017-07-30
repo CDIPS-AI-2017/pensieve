@@ -3,6 +3,8 @@ import spacy
 import os
 import textacy
 import _pickle as pickle
+import json_dump
+import json
 from numpy.random import randint
 from collections import Counter
 
@@ -79,18 +81,21 @@ class Corpus(object):
         return char_pars
 
     def gather_corpus_memories(self, char_name, density_cut=0.8,
-                               verb_cut=500, name_cut=100):
+                               verb_cut=500, name_cut=100, save=None):
         """
         Collects memories from all character paragraphs in the corpus.
 
         Args:
             char_name: Name of character to build memories for
+                       Can be a list of aliases or a string
             density_cut: mentions/sentences cut to select paragraphs
                          constituting memory
             verb_cut: frequency of verb appearence in corpus. If
                       verb_freq < verb_cut, the verb stays in the
                       memory
             name_cut: like verb_cut, but for people, places, and things
+            save: save mem JSON files to this path. If None, files are
+                  not saved
 
         Returns:
             memories: list of memories, ready to be put in DB
@@ -98,7 +103,17 @@ class Corpus(object):
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
         for par in char_pars:
-            memories.append(par.gen_mem_dict(char_name, verb_cut, name_cut))
+            mem_dict = par.gen_mem_dict(char_name, verb_cut, name_cut)
+            memories.append(json_dump.dump_mem_to_json(mem_dict))
+        if save is not None:
+            if isinstance(char_name, str):
+                filebase = char_name.replace(' ', '_').lower().strip()
+            else:
+                filebase = '_'.join(char_name)
+                filebase = filebase.replace(' ', '_').lower().strip()
+            path = os.path.join(save, filebase+'.json')
+            with open(path) as f:
+                json.dump(memories, f)
         return memories
 
 
@@ -180,10 +195,10 @@ class Doc(object):
                 char_pars.append(par)
         return char_pars
 
-    def build_doc_memories(self, char_name, density_cut=0.8,
-                           verb_cut=500, name_cut=100):
+    def gather_doc_memories(self, char_name, density_cut=0.8,
+                            verb_cut=500, name_cut=100, save=None):
         """
-        Builds memories from character paragraphs.
+        Collects memories from character paragraphs.
 
         Args:
             char_name: Name of character to build memories for
@@ -193,6 +208,8 @@ class Doc(object):
                       verb_freq < verb_cut, the verb stays in the
                       memory
             name_cut: like verb_cut, but for people, places, and things
+            save: save mem JSON files to this path. If None, files are
+                  not saved
 
         Returns:
             memories: list of sanitized memories, ready to be put in DB
@@ -200,7 +217,17 @@ class Doc(object):
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
         for par in char_pars:
-            memories.append(par.gen_mem_dict(char_name, verb_cut, name_cut))
+            mem_dict = par.gen_mem_dict(char_name, verb_cut, name_cut)
+            memories.append(json_dump.dump_mem_to_json(mem_dict))
+        if save is not None:
+            if isinstance(char_name, str):
+                filebase = char_name.replace(' ', '_').lower().strip()
+            else:
+                filebase = '_'.join(char_name)
+                filebase = filebase.replace(' ', '_').lower().strip()
+            path = os.path.join(save, filebase+'.json')
+            with open(path, 'w') as f:
+                json.dump(memories, f, indent=4)
         return memories
 
 
@@ -353,18 +380,20 @@ class Paragraph(object):
 
 
 if __name__ == '__main__':
-    try:
-        harry_pars = pickle.load(open('harry_pars_full_corpus.pkl', 'rb'))
-    except IOError:
-        corpus = Corpus('../corpus/')
-        harry_pars = corpus.find_character_paragraphs(['Harry', 'Potter'], 0.4)
-        pickle.dump(harry_pars, open('harry_pars_full_corpus.pkl', 'wb'))
+    # try:
+    #     harry_pars = pickle.load(open('harry_pars_full_corpus.pkl', 'rb'))
+    # except IOError:
+    #     corpus = Corpus('../corpus/')
+    #     harry_pars = corpus.find_character_paragraphs(['Harry', 'Potter'], 0.4)
+    #     pickle.dump(harry_pars, open('harry_pars_full_corpus.pkl', 'wb'))
 
-    from pprint import pprint
-    print('{} paragraphs found'.format(len(harry_pars)))
-    rand_index = randint(0, len(harry_pars)-1)
-    test_par = harry_pars[rand_index]
-    print('Book '+str(test_par.doc.id+1))
-    print('Paragraph '+str(test_par.id))
-    print(test_par.text)
-    pprint(test_par.words)
+    # from pprint import pprint
+    # print('{} paragraphs found'.format(len(harry_pars)))
+    # rand_index = randint(0, len(harry_pars)-1)
+    # test_par = harry_pars[rand_index]
+    # print('Book '+str(test_par.doc.id+1))
+    # print('Paragraph '+str(test_par.id))
+    # print(test_par.text)
+    # pprint(test_par.words)
+    doc = Doc('../corpus/book1.txt')
+    doc.gather_doc_memories('Harry', save='./')
