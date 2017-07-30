@@ -23,7 +23,7 @@ class Corpus(object):
             docs: List of Doc objects from corpus
             paragraphs: List of Paragraph objects from corpus
         """
-        self.corpus_dir = corpus_dir
+        self.corpus_dir = os.path.abspath(corpus_dir)
         self._docs = None
         self._paragraphs = None
 
@@ -36,7 +36,9 @@ class Corpus(object):
     @property
     def paragraphs(self):
         if not self._paragraphs:
-            self._paragraphs = [doc.paragraphs for doc in self.docs]
+            self._paragraphs = []
+            for doc in self.docs:
+                self._paragraphs += doc.paragraphs
         return self._paragraphs
 
     def read_corpus(self):

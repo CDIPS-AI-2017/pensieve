@@ -1,3 +1,5 @@
+import os
+import json
 import pickle
 import requests
 from PIL import Image
