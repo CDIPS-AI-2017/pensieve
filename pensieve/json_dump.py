@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime
 
 CONCEPT_MAP = {'people': 'Person',
                'places': 'Place',
@@ -25,7 +26,7 @@ def dump_mem_to_json(mem_dict, save=None):
             'iconURL': '',
             'created': '',
             'updated': ''}
-    relation = {'weight': 0.0,
+    relation = {'weight': 0.5,
                 'joy': 0.0,
                 'fear': 0.0,
                 'surprise': 0.0,
@@ -46,16 +47,15 @@ def dump_mem_to_json(mem_dict, save=None):
                                'name': clean_text,
                                'label': '',
                                'iconURL': '',
-                               'imageURL': '',
-                               'contact': ''}
+                               'imageURL': ''}
             concept_relation = 'Has_{}'.format(concept['node']['concept'])
             concept['relation'] = {'relation': concept_relation,
                                    'name': '',
                                    'iconURL': '',
                                    'imageURL': '',
                                    'weight': 0.5,
-                                   'created': '',
-                                   'updated': '',
+                                   'created': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.000Z'),
+                                   'updated': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.000Z'),
                                    'originType': 'OriginUserDefined',
                                    'joy': 0.0,
                                    'fear': 0.0,
@@ -65,7 +65,7 @@ def dump_mem_to_json(mem_dict, save=None):
                                    'anger': 0.0}
             concepts.append(concept)
     narrative = {'node': {'name': '',
-                          'label': '',
+                          'label': 'title',
                           'text': mem_dict['narrative']},
                  'relation': {'weight': 0.5}}
     mem = {'memory': '',
