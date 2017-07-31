@@ -2,10 +2,8 @@ from __future__ import unicode_literals
 import spacy
 import os
 import textacy
-import _pickle as pickle
-import json_dump
+from .json_dump import dump_mem_to_json
 import json
-from numpy.random import randint
 from collections import Counter
 
 print('Loading spaCy...')
@@ -104,7 +102,7 @@ class Corpus(object):
         char_pars = self.find_character_paragraphs(char_name, density_cut)
         for par in char_pars:
             mem_dict = par.gen_mem_dict(char_name, verb_cut, name_cut)
-            memories.append(json_dump.dump_mem_to_json(mem_dict))
+            memories.append(dump_mem_to_json(mem_dict))
         if save is not None:
             if isinstance(char_name, str):
                 filebase = char_name.replace(' ', '_').lower().strip()
@@ -218,7 +216,7 @@ class Doc(object):
         char_pars = self.find_character_paragraphs(char_name, density_cut)
         for par in char_pars:
             mem_dict = par.gen_mem_dict(char_name, verb_cut, name_cut)
-            memories.append(json_dump.dump_mem_to_json(mem_dict))
+            memories.append(dump_mem_to_json(mem_dict))
         if save is not None:
             if isinstance(char_name, str):
                 filebase = char_name.replace(' ', '_').lower().strip()
@@ -380,20 +378,5 @@ class Paragraph(object):
 
 
 if __name__ == '__main__':
-    # try:
-    #     harry_pars = pickle.load(open('harry_pars_full_corpus.pkl', 'rb'))
-    # except IOError:
-    #     corpus = Corpus('../corpus/')
-    #     harry_pars = corpus.find_character_paragraphs(['Harry', 'Potter'], 0.4)
-    #     pickle.dump(harry_pars, open('harry_pars_full_corpus.pkl', 'wb'))
-
-    # from pprint import pprint
-    # print('{} paragraphs found'.format(len(harry_pars)))
-    # rand_index = randint(0, len(harry_pars)-1)
-    # test_par = harry_pars[rand_index]
-    # print('Book '+str(test_par.doc.id+1))
-    # print('Paragraph '+str(test_par.id))
-    # print(test_par.text)
-    # pprint(test_par.words)
     doc = Doc('../corpus/book1.txt')
     doc.gather_doc_memories('Harry', save='./')
