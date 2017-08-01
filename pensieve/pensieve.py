@@ -189,7 +189,7 @@ class Doc(object):
                 continue
             mentions = 0
             for alias in char_name:
-                mentions += par.words['names'][alias]
+                mentions += par.words['people'][alias]
             density = mentions/n_sentences
             if density > density_cut:
                 char_pars.append(par)
