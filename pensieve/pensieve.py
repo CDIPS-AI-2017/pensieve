@@ -2,11 +2,9 @@ from __future__ import unicode_literals
 import spacy
 import os
 import textacy
-import pickle
 import string
 from .json_dump import dump_mem_to_json
 import json
-from numpy.random import randint
 from collections import Counter
 
 print('Loading spaCy...')
@@ -100,7 +98,7 @@ class Corpus(object):
                   not saved
 
         Returns:
-            memories: list of sanitized memories, ready to be put in DB
+            memories: list of memories, ready to be put in DB
         """
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
@@ -124,11 +122,13 @@ class Doc(object):
     def __init__(self, path_to_text, doc_id=None, corpus=None):
         """
         Document level object
+
         Args:
             path_to_text: file path to txt of document
             id: index of doc in corpus [default: None]
             corpus: Corpus object containing document
                     [default: None]
+
         Attributes:
             text: unicode string of text in document
             paragraphs: list of Paragraph objects for paragraph in doc
@@ -199,6 +199,7 @@ class Doc(object):
                             verb_cut=500, name_cut=100, save=None):
         """
         Collects memories from character paragraphs.
+
         Args:
             char_name: Name of character to build memories for
             density_cut: mentions/sentences cut to select paragraphs
@@ -209,6 +210,7 @@ class Doc(object):
             name_cut: like verb_cut, but for people, places, and things
             save: save mem JSON files to this path. If None, files are
                   not saved
+
         Returns:
             memories: list of sanitized memories, ready to be put in DB
         """
@@ -234,11 +236,13 @@ class Paragraph(object):
     def __init__(self, text, par_id=None, doc=None):
         """
         Paragraph level object
+
         Args:
             text: text of paragraph
             par_id: index of paragraph in doc
             doc: Document object containing paragraph
                  [default: None]
+
         Attributes:
             spacy_doc: spaCy Doc object
             words: dictionary of all words extracted with spaCy
