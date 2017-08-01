@@ -156,7 +156,7 @@ class Doc(object):
     def words(self):
         if not self._words:
             self._words = {'times': Counter(),
-                           'verbs': Counter(),
+                           'activities': Counter(),
                            'people': Counter(),
                            'places': Counter(),
                            'things': Counter()}
@@ -285,6 +285,10 @@ class Paragraph(object):
         names = []
         for name in textacy.extract.named_entities(self.spacy_doc,
                                                    include_types=['PERSON']):
+            # Exclude words too short to be names and strange characters
+            if len(name.text) < 3:
+                continue
+            # Handle possessives
             if name.text[-2] not in string.ascii_lowercase:
                 names.append(name.text[:-2])
             else:
@@ -436,7 +440,7 @@ class Paragraph(object):
         return culled_output
 
 if __name__ == '__main__':
-    book1 = Doc('/Users/samdixon/repos/cdips_data_science/pensieve/hp_corpus/book1.txt')
+    book4 = Doc('/Users/samdixon/repos/cdips_data_science/pensieve/hp_corpus/book4.txt')
     from pprint import pprint
-    for k, v in book1.words.items():
+    for k, v in book4.words.items():
         pprint({k: v.most_common(10)})
