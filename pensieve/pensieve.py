@@ -81,7 +81,7 @@ class Corpus(object):
         return char_pars
 
     def gather_corpus_memories(self, char_name, density_cut=0.8,
-                               verb_cut=500, name_cut=100, save=None):
+                               n_verbs  = 3, save=None):
         """
         Collects memories from all character paragraphs in the corpus.
 
@@ -103,7 +103,7 @@ class Corpus(object):
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
         for par in char_pars:
-            mem_dict = par.gen_mem_dict(char_name, verb_cut, name_cut)
+            mem_dict = par.gen_mem_dict(char_name, n_verbs)
             memories.append(dump_mem_to_json(mem_dict))
         if save is not None:
             if isinstance(char_name, str):
@@ -196,7 +196,7 @@ class Doc(object):
         return char_pars
 
     def gather_doc_memories(self, char_name, density_cut=0.8,
-                            verb_cut=500, name_cut=100, save=None):
+                            n_verbs = 3, save=None):
         """
         Collects memories from character paragraphs.
 
@@ -217,7 +217,7 @@ class Doc(object):
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
         for par in char_pars:
-            mem_dict = par.gen_mem_dict(char_name, verb_cut, name_cut)
+            mem_dict = par.gen_mem_dict(char_name, n_verbs)
             memories.append(dump_mem_to_json(mem_dict))
         if save is not None:
             if isinstance(char_name, str):
@@ -266,7 +266,7 @@ class Paragraph(object):
         times.append('Par. '+str(self.id))
         return times
 
-    def extract_activities(self, n_verbs=3):
+    def extract_activities(self, n_verbs = 5):
         """
         Extract verbs in the paragraph
         """
@@ -411,7 +411,7 @@ class Paragraph(object):
     #                         activities.append(' '.join(svo))
     #     return activities
 
-    def culled_words_dict(self, character):
+    def gen_mem_dict(self, character, n_verbs):
         """
         Determine the most important words of those collected.
 
@@ -432,7 +432,7 @@ class Paragraph(object):
                 mem_people.append(name)
         mem_places = self.extract_places()
         mem_things = self.extract_things()
-        mem_activities = self.extract_activities()
+        mem_activities = self.extract_activities(n_verbs)
         culled_output = {'people': mem_people,
                          'places': mem_places,
                          'activities': mem_activities,
