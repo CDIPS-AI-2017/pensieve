@@ -331,7 +331,7 @@ class Paragraph(object):
                       'activities': Counter()}
         for time in self.extract_times():
             words_dict['times'][time] += 1
-        for name in self.extract_names():
+        for name in self.extract_people():
             words_dict['people'][name] += 1
         for place in self.extract_places():
             # Places are often misidentified as people
@@ -343,7 +343,7 @@ class Paragraph(object):
             if thing in words_dict['people']:
                 continue
             words_dict['things'][thing] += 1
-        for verb in self.extract_verbs():
+        for verb in self.extract_activities():
             words_dict['activities'][verb] += 1
         return words_dict
 
@@ -423,12 +423,12 @@ class Paragraph(object):
         mem_people = []
         if isinstance(character, str):
             character = [character]
-        for name in self.extract_names():
+        for name in self.extract_people():
             if name not in character:
                 mem_people.append(name)
         mem_places = self.extract_places()
         mem_things = self.extract_things()
-        mem_activities = self.extract_verbs()
+        mem_activities = self.extract_activities()
         culled_output = {'people': mem_people,
                          'places': mem_places,
                          'activities': mem_activities,
