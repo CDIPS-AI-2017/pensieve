@@ -156,8 +156,8 @@ class Doc(object):
     def words(self):
         if not self._words:
             self._words = {'times': Counter(),
-                           'verbs': Counter(),
-                           'names': Counter(),
+                           'activities': Counter(),
+                           'people': Counter(),
                            'places': Counter(),
                            'things': Counter()}
             for par in self.paragraphs:
@@ -285,6 +285,10 @@ class Paragraph(object):
         names = []
         for name in textacy.extract.named_entities(self.spacy_doc,
                                                    include_types=['PERSON']):
+            # Exclude words too short to be names and strange characters
+            if len(name.text) < 3:
+                continue
+            # Handle possessives
             if name.text[-2] not in string.ascii_lowercase:
                 names.append(name.text[:-2])
             else:
@@ -331,7 +335,7 @@ class Paragraph(object):
                       'activities': Counter()}
         for time in self.extract_times():
             words_dict['times'][time] += 1
-        for name in self.extract_names():
+        for name in self.extract_people():
             words_dict['people'][name] += 1
         for place in self.extract_places():
             # Places are often misidentified as people
@@ -343,7 +347,7 @@ class Paragraph(object):
             if thing in words_dict['people']:
                 continue
             words_dict['things'][thing] += 1
-        for verb in self.extract_verbs():
+        for verb in self.extract_activities():
             words_dict['activities'][verb] += 1
         return words_dict
 
@@ -423,12 +427,12 @@ class Paragraph(object):
         mem_people = []
         if isinstance(character, str):
             character = [character]
-        for name in self.extract_names():
+        for name in self.extract_people():
             if name not in character:
                 mem_people.append(name)
         mem_places = self.extract_places()
         mem_things = self.extract_things()
-        mem_activities = self.extract_verbs()
+        mem_activities = self.extract_activities()
         culled_output = {'people': mem_people,
                          'places': mem_places,
                          'activities': mem_activities,
@@ -436,7 +440,7 @@ class Paragraph(object):
         return culled_output
 
 if __name__ == '__main__':
-    book1 = Doc('/Users/samdixon/repos/cdips_data_science/pensieve/hp_corpus/book1.txt')
+    book4 = Doc('/Users/samdixon/repos/cdips_data_science/pensieve/hp_corpus/book4.txt')
     from pprint import pprint
-    for k, v in book1.words.items():
+    for k, v in book4.words.items():
         pprint({k: v.most_common(10)})
