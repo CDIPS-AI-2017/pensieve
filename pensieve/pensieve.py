@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 import spacy
 import os
 import textacy
+import string
 from .json_dump import dump_mem_to_json
 import json
 from collections import Counter
@@ -52,6 +53,7 @@ class Corpus(object):
         file_paths = [os.path.join(self.corpus_dir, f) for f in file_list]
         docs = []
         for i, file_path in enumerate(file_paths):
+            print('Loading '+file_path)
             docs.append(Doc(file_path, i, self))
         return docs
 
@@ -154,8 +156,8 @@ class Doc(object):
     def words(self):
         if not self._words:
             self._words = {'times': Counter(),
-                           'verbs': Counter(),
-                           'names': Counter(),
+                           'activities': Counter(),
+                           'people': Counter(),
                            'places': Counter(),
                            'things': Counter()}
             for par in self.paragraphs:
@@ -251,93 +253,165 @@ class Paragraph(object):
         self.spacy_doc = NLP(text)
         self.words = self.build_words_dict()
 
+    def extract_times(self):
+        """
+        Extract times mentioned in the text and add book time information
+        """
+        times = []
+        include_types = ['DATE', 'TIME', 'EVENT']
+        for time in textacy.extract.named_entities(self.spacy_doc,
+                                                   include_types=include_types):
+            times.append(time)
+        times.append('Book '+str(self.doc.id))
+        times.append('Par. '+str(self.id))
+        return times
+
+    def extract_activities(self, n_verbs=3):
+        """
+        Extract verbs in the paragraph
+        """
+        verb_ranking = [(x, x.rank) for x in textacy.spacy_utils.get_main_verbs_of_sent(self.spacy_doc)]
+        verbs = []
+        for verb in sorted(verb_ranking, key=lambda x: -x[1])[:n_verbs]:
+            text = verb[0].lemma_
+            if text[0] in string.ascii_lowercase:
+                verbs.append(text)
+        return verbs
+
+    def extract_people(self):
+        """
+        Extract names in paragraph
+        """
+        names = []
+        for name in textacy.extract.named_entities(self.spacy_doc,
+                                                   include_types=['PERSON']):
+            # Exclude words too short to be names and strange characters
+            if len(name.text) < 3:
+                continue
+            # Handle possessives
+            if name.text[-2] not in string.ascii_lowercase:
+                names.append(name.text[:-2])
+            else:
+                names.append(name.text)
+        return names
+
+    def extract_places(self):
+        """
+        Extract places in paragraph
+        """
+        places = []
+        include_types = ['LOC', 'GPE', 'FACILITY']
+        for place in textacy.extract.named_entities(self.spacy_doc,
+                                                include_types=include_types):
+            if place.text != 'Hagrid':
+                places.append(place.text)
+        return places
+
+    def extract_things(self):
+        """
+        Extract things mentioned in paragraph
+        """
+        # Get named objects
+        include_types = ['ORG', 'NORP', 'WORK_OF_ART', 'PRODUCT']
+        things = []
+        for obj in textacy.extract.named_entities(self.spacy_doc,
+                                                  include_types=include_types):
+            things.append(obj)
+        # Get noun chunks
+        for nch in textacy.extract.noun_chunks(self.spacy_doc, drop_determiners=True):
+            if len(nch) == 1 and nch[0].pos == spacy.parts_of_speech.PRON:
+                continue
+            things.append(nch)
+        return things
+
     def build_words_dict(self):
         """
-        Use textacy to extract entities and main verbs from the paragraph.
+        Extract main words from the paragraph.
         """
         words_dict = {'times': Counter(),
-                      'verbs': Counter(),
-                      'names': Counter(),
+                      'people': Counter(),
                       'places': Counter(),
                       'things': Counter(),
-                      'mood': None,
-                      'img_url': None}
-        times = textacy.extract.named_entities(self.spacy_doc, include_types=['DATE', 'TIME', 'EVENT'])
-        main_verbs = textacy.spacy_utils.get_main_verbs_of_sent(self.spacy_doc)
-        names = textacy.extract.named_entities(self.spacy_doc, include_types=['PERSON'])
-        places = textacy.extract.named_entities(self.spacy_doc, include_types=['LOC', 'GPE', 'FACILITY'])
-        things = textacy.extract.named_entities(self.spacy_doc, include_types=['ORG', 'NORP', 'WORK_OF_ART', 'PRODUCT'])
-        for time in times:
-            words_dict['times'][time.text] += 1
-        for verb in main_verbs:
-            words_dict['verbs'][verb.text] += 1
-        for name in names:
-            words_dict['names'][name.text] += 1
-        for place in places:
-            words_dict['places'][place.text] += 1
-        for thing in things:
-            words_dict['things'][thing.text] += 1
+                      'activities': Counter()}
+        for time in self.extract_times():
+            words_dict['times'][time] += 1
+        for name in self.extract_people():
+            words_dict['people'][name] += 1
+        for place in self.extract_places():
+            # Places are often misidentified as people
+            if place in words_dict['people']:
+                continue
+            words_dict['places'][place] += 1
+        for thing in self.extract_things():
+            # People are picked up when iterating over noun chunks
+            if thing in words_dict['people']:
+                continue
+            words_dict['things'][thing] += 1
+        for verb in self.extract_activities():
+            words_dict['activities'][verb] += 1
         return words_dict
 
-    def sanitize_places_and_things(self, freq_cut=100):
-        """
-        Get a sanitized version of paragraph places and things.
-        Get places that don't appear in the most common doc names, and
-        things that don't appear in the most common doc places.
+    # def sanitize_places_and_objects(self, freq_cut=100):
+    #     """
+    #     Get a sanitized version of paragraph places and objects.
+    #     Get places that don't appear in the most common doc names, and
+    #     objects that don't appear in the most common doc places.
 
-        Args:
-            freq_cut: frequency to define "commonness" within the doc
+    #     NOTE: I'm not really sure what this function is actually doing...
 
-        Returns:
-            places: sanitized place names
-            things: sanitized thing names
-        """
-        doc_names = dict(self.doc.words['names'].most_common(freq_cut))
-        doc_places = dict(self.doc.words['places'].most_common(freq_cut))
-        places = []
-        things = []
-        for place in self.words['places']:
-            if place not in doc_names:
-                places.append(place)
-        for thing in self.words['things']:
-            if thing not in doc_places and thing not in places:
-                things.append(thing)
-        return places, things
+    #     Args:
+    #         freq_cut: frequency to define "commonness" within the doc
 
-    def gen_mem_activity(self, verbs_cut=500):
-        """
-        Determine the key activities in a paragraph by removing
-        verbs commonly used in the doc
+    #     Returns:
+    #         places: sanitized place names
+    #         objects: sanitized object names
+    #     """
+    #     doc_names = dict(self.doc.words['names'].most_common(freq_cut))
+    #     doc_places = dict(self.doc.words['places'].most_common(freq_cut))
+    #     places = []
+    #     objects = []
+    #     for place in self.words['places']:
+    #         if place not in doc_names:
+    #             places.append(place)
+    #     for obj in self.words['objects']:
+    #         if obj not in doc_places and obj not in places:
+    #             objects.append(obj)
+    #     return places, objects
 
-        Args:
-            verbs_cut: frequency of verb in doc to cut on
+    # def gen_mem_activity(self, verbs_cut=500):
+    #     """
+    #     Determine the key activities in a paragraph by removing
+    #     verbs commonly used in the doc
 
-        Returns:
-            activities: list of key activity strings
-        """
-        activities = []
-        doc_verbs = dict(self.doc.words['verbs'].most_common(verbs_cut))
-        main_verbs = textacy.spacy_utils.get_main_verbs_of_sent(self.spacy_doc)
-        for verb in main_verbs:
-            if (verb.text in doc_verbs) and (doc_verbs[verb.text] < verbs_cut):
-                span = textacy.spacy_utils.get_span_for_verb_auxiliaries(verb)
-                complex_verb = self.spacy_doc[span[0]].text
-                span_end = 1
-                if textacy.spacy_utils.is_negated_verb(verb) is True:
-                    complex_verb = complex_verb+' not '
-                    span_end = 0
-                for a in range(span[0]+1, span[1]+span_end):
-                    complex_verb += " "+self.spacy_doc[span[1]].text
-                subjects = textacy.spacy_utils.get_subjects_of_verb(verb)
-                objects = textacy.spacy_utils.get_objects_of_verb(verb)
-                if len(subjects) > 0 and len(objects) > 0:
-                    for subject in subjects:
-                        for obj in objects:
-                            svo = [subject.text, complex_verb, obj.text]
-                            activities.append(' '.join(svo))
-        return activities
+    #     Args:
+    #         verbs_cut: frequency of verb in doc to cut on
 
-    def gen_mem_dict(self, character, verb_cut=500, name_cut=100):
+    #     Returns:
+    #         activities: list of key activity strings
+    #     """
+    #     activities = []
+    #     doc_verbs = dict(self.doc.words['verbs'].most_common(verbs_cut))
+    #     main_verbs = textacy.spacy_utils.get_main_verbs_of_sent(self.spacy_doc)
+    #     for verb in main_verbs:
+    #         if (verb.text in doc_verbs) and (doc_verbs[verb.text] < verbs_cut):
+    #             span = textacy.spacy_utils.get_span_for_verb_auxiliaries(verb)
+    #             complex_verb = self.spacy_doc[span[0]].text
+    #             span_end = 1
+    #             if textacy.spacy_utils.is_negated_verb(verb) is True:
+    #                 complex_verb = complex_verb+' not '
+    #                 span_end = 0
+    #             for a in range(span[0]+1, span[1]+span_end):
+    #                 complex_verb += " "+self.spacy_doc[span[1]].text
+    #             subjects = textacy.spacy_utils.get_subjects_of_verb(verb)
+    #             objects = textacy.spacy_utils.get_objects_of_verb(verb)
+    #             if len(subjects) > 0 and len(objects) > 0:
+    #                 for subject in subjects:
+    #                     for obj in objects:
+    #                         svo = [subject.text, complex_verb, obj.text]
+    #                         activities.append(' '.join(svo))
+    #     return activities
+
+    def culled_words_dict(self, character):
         """
         Determine the most important words of those collected.
 
@@ -353,30 +427,20 @@ class Paragraph(object):
         mem_people = []
         if isinstance(character, str):
             character = [character]
-        for name in self.words['names']:
-            if name not in character:  # Ignore redundant mention of subject
+        for name in self.extract_people():
+            if name not in character:
                 mem_people.append(name)
-        if len(mem_people) == 0:
-            mem_people.append('alone')  # Some scenes have no other names
-        mem_places, mem_things = self.sanitize_places_and_things(name_cut)
-        mem_activities = self.gen_mem_activity(verb_cut)
+        mem_places = self.extract_places()
+        mem_things = self.extract_things()
+        mem_activities = self.extract_activities()
         culled_output = {'people': mem_people,
                          'places': mem_places,
                          'activities': mem_activities,
-                         'things': mem_things,
-                         'times': list(self.words['times']),
-                         'mood': self.words['mood'],
-                         'img_url': self.words['img_url'],
-                         'narrative': self.text}
+                         'things': mem_things}
         return culled_output
 
-    def search_for_images(self):
-        """
-        Determine a query to use to search Bing for images
-        """
-        pass
-
-
 if __name__ == '__main__':
-    doc = Doc('../corpus/book1.txt')
-    doc.gather_doc_memories('Harry', save='./')
+    book4 = Doc('/Users/samdixon/repos/cdips_data_science/pensieve/hp_corpus/book4.txt')
+    from pprint import pprint
+    for k, v in book4.words.items():
+        pprint({k: v.most_common(10)})
