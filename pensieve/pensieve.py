@@ -4,6 +4,8 @@ import os
 import textacy
 import pickle
 import string
+from .json_dump import dump_mem_to_json
+import json
 from numpy.random import randint
 from collections import Counter
 
@@ -24,9 +26,23 @@ class Corpus(object):
             docs: List of Doc objects from corpus
             paragraphs: List of Paragraph objects from corpus
         """
-        self.corpus_dir = corpus_dir
-        self.docs = self.read_corpus()
-        self.paragraphs = [doc.paragraphs for doc in self.docs]
+        self.corpus_dir = os.path.abspath(corpus_dir)
+        self._docs = None
+        self._paragraphs = None
+
+    @property
+    def docs(self):
+        if not self._docs:
+            self._docs = self.read_corpus()
+        return self._docs
+
+    @property
+    def paragraphs(self):
+        if not self._paragraphs:
+            self._paragraphs = []
+            for doc in self.docs:
+                self._paragraphs += doc.paragraphs
+        return self._paragraphs
 
     def read_corpus(self):
         """
@@ -66,19 +82,22 @@ class Corpus(object):
                                                        density_cut)
         return char_pars
 
-    def build_corpus_memories(self, char_name, density_cut=0.8,
-                              verb_cut=500, name_cut=100):
+    def gather_corpus_memories(self, char_name, density_cut=0.8,
+                               verb_cut=500, name_cut=100, save=None):
         """
-        Builds memories from character paragraphs.
+        Collects memories from all character paragraphs in the corpus.
 
         Args:
             char_name: Name of character to build memories for
+                       Can be a list of aliases or a string
             density_cut: mentions/sentences cut to select paragraphs
                          constituting memory
             verb_cut: frequency of verb appearence in corpus. If
                       verb_freq < verb_cut, the verb stays in the
                       memory
             name_cut: like verb_cut, but for people, places, and things
+            save: save mem JSON files to this path. If None, files are
+                  not saved
 
         Returns:
             memories: list of sanitized memories, ready to be put in DB
@@ -86,7 +105,17 @@ class Corpus(object):
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
         for par in char_pars:
-            memories.append(par.culled_words_dict())
+            mem_dict = par.gen_mem_dict(char_name, verb_cut, name_cut)
+            memories.append(dump_mem_to_json(mem_dict))
+        if save is not None:
+            if isinstance(char_name, str):
+                filebase = char_name.replace(' ', '_').lower().strip()
+            else:
+                filebase = '_'.join(char_name)
+                filebase = filebase.replace(' ', '_').lower().strip()
+            path = os.path.join(save, filebase+'.json')
+            with open(path) as f:
+                json.dump(memories, f)
         return memories
 
 
@@ -95,38 +124,48 @@ class Doc(object):
     def __init__(self, path_to_text, doc_id=None, corpus=None):
         """
         Document level object
-
         Args:
             path_to_text: file path to txt of document
             id: index of doc in corpus [default: None]
             corpus: Corpus object containing document
                     [default: None]
-
         Attributes:
             text: unicode string of text in document
             paragraphs: list of Paragraph objects for paragraph in doc
             words: dictionary of mem words extracted from doc
         """
         self.path_to_text = path_to_text
-        self.text = open(path_to_text, 'r').read()
         self.id = doc_id
-        self.paragraphs = []
-        for i, p in enumerate(self.text.split('\n')):
-            if len(p.split(' ')) < 30:
-                continue
-            self.paragraphs.append(Paragraph(p, i, self))
         self.corpus = corpus
-        self.words = {'times': Counter(),
-                      'people': Counter(),
-                      'places': Counter(),
-                      'things': Counter(),
-                      'activities': Counter()}
-        print('Generating paragraphs...')
-        for p in self.paragraphs:
-            for key in p.words:
-                self.words[key] = self.words[key]+p.words[key]
+        self.text = open(path_to_text, 'r').read()
+        self._paragraphs = None
+        self._words = None
 
-    def find_character_paragraphs(self, char_name, density_cut=0.4):
+    @property
+    def paragraphs(self):
+        if not self._paragraphs:
+            print('Generating paragraphs for doc '+str(self.id))
+            self._paragraphs = []
+            for i, p in enumerate(self.text.split('\n')):
+                if len(p.split(' ')) < 30:
+                    continue
+                self._paragraphs.append(Paragraph(p, i, self))
+        return self._paragraphs
+
+    @property
+    def words(self):
+        if not self._words:
+            self._words = {'times': Counter(),
+                           'verbs': Counter(),
+                           'names': Counter(),
+                           'places': Counter(),
+                           'things': Counter()}
+            for par in self.paragraphs:
+                for key in self._words:
+                    self._words[key] += par.words[key]
+        return self._words
+
+    def find_character_paragraphs(self, char_name, density_cut=0.8):
         """
         Find paragraphs in the corpus where character is mentioned
         heavily.
@@ -156,28 +195,59 @@ class Doc(object):
                 char_pars.append(par)
         return char_pars
 
+    def gather_doc_memories(self, char_name, density_cut=0.8,
+                            verb_cut=500, name_cut=100, save=None):
+        """
+        Collects memories from character paragraphs.
+        Args:
+            char_name: Name of character to build memories for
+            density_cut: mentions/sentences cut to select paragraphs
+                         constituting memory
+            verb_cut: frequency of verb appearence in corpus. If
+                      verb_freq < verb_cut, the verb stays in the
+                      memory
+            name_cut: like verb_cut, but for people, places, and things
+            save: save mem JSON files to this path. If None, files are
+                  not saved
+        Returns:
+            memories: list of sanitized memories, ready to be put in DB
+        """
+        memories = []
+        char_pars = self.find_character_paragraphs(char_name, density_cut)
+        for par in char_pars:
+            mem_dict = par.gen_mem_dict(char_name, verb_cut, name_cut)
+            memories.append(dump_mem_to_json(mem_dict))
+        if save is not None:
+            if isinstance(char_name, str):
+                filebase = char_name.replace(' ', '_').lower().strip()
+            else:
+                filebase = '_'.join(char_name)
+                filebase = filebase.replace(' ', '_').lower().strip()
+            path = os.path.join(save, filebase+'.json')
+            with open(path, 'w') as f:
+                json.dump(memories, f, indent=4)
+        return memories
+
 
 class Paragraph(object):
 
     def __init__(self, text, par_id=None, doc=None):
         """
         Paragraph level object
-
         Args:
             text: text of paragraph
             par_id: index of paragraph in doc
             doc: Document object containing paragraph
                  [default: None]
-
         Attributes:
             spacy_doc: spaCy Doc object
             words: dictionary of all words extracted with spaCy
         """
-        self.spacy_doc = NLP(text)
         self.doc = doc
         self.text = text
-        self.words = self.build_words_dict()
         self.id = par_id
+        self.spacy_doc = NLP(text)
+        self.words = self.build_words_dict()
 
     def extract_times(self):
         """
