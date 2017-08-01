@@ -262,9 +262,11 @@ class Paragraph(object):
         for time in textacy.extract.named_entities(self.spacy_doc,
                                                    include_types=include_types):
             times.append(time)
+        times.append('Book '+str(self.doc.id))
+        times.append('Par. '+str(self.id))
         return times
 
-    def extract_verbs(self, n_verbs=3):
+    def extract_activities(self, n_verbs=3):
         """
         Extract verbs in the paragraph
         """
@@ -276,7 +278,7 @@ class Paragraph(object):
                 verbs.append(text)
         return verbs
 
-    def extract_names(self):
+    def extract_people(self):
         """
         Extract names in paragraph
         """
@@ -424,8 +426,6 @@ class Paragraph(object):
         for name in self.extract_names():
             if name not in character:
                 mem_people.append(name)
-        if len(mem_people) == 0:
-            mem_people.append('alone')
         mem_places = self.extract_places()
         mem_things = self.extract_things()
         mem_activities = self.extract_verbs()
