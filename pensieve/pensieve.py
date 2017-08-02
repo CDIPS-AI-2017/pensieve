@@ -147,21 +147,24 @@ class Doc(object):
             print('Generating paragraphs for doc '+str(self.id))
             self._paragraphs = []
             line_list = self.text.split('\n')
-            i = 0
-            while i < len(line_list):
-                if len(line_list[i].strip()) == 0:
-                    i += 1
-                    continue
-                if len(line_list[i].split(' ')) >= 25:
-                    self._paragraphs.append(Paragraph(line_list[i], i, self))
+            myIterator = iter(enumerate(line_list))
+            tuple = next(myIterator, None)
+            while tuple is not None:
+                i, line = tuple
+                if len(line.strip()) == 0:
+                    pass
+                elif len(line.split(' ')) >= 25:
+                    self._paragraphs.append(Paragraph(line, i, self))
                 else:
                     chunk = ""
-                    while (i < len(line_list)) and (len(line_list[i].split(' ')) < 25 or line_list[i][0] == "'" or line_list[i][0] == '"'):
-                        chunk = chunk + "\n" + line_list[i]
-                        i += 1
+                    while (tuple is not None) and (len(line.split(' ')) < 25 or line[0] == "'" or line[0] == '"'):
+                        chunk = chunk + "\n" + line
+                        tuple = next(myIterator, None)
+                        if tuple is not None:
+                            i, line = tuple
                     self._paragraphs.append(Paragraph(chunk, i, self))
                     continue
-                i += 1
+                tuple = next(myIterator, None)
         return self._paragraphs
 
     @property
