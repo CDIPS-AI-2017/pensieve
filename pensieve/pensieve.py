@@ -6,6 +6,8 @@ import string
 from .json_dump import dump_mem_to_json
 import json
 from collections import Counter
+import panda
+import numpy
 
 print('Loading spaCy...')
 NLP = spacy.load('en')
@@ -140,6 +142,9 @@ class Doc(object):
         self.text = open(path_to_text, 'r').read()
         self._paragraphs = None
         self._words = None
+        # Hardcoded path to book_emo.h5 file. Method to generate this file needs to be implemented
+        # in extract_mood_words
+        self.mood_weights = panda.read_hdf('hp_corpus/book_emo.h5',key='book'+str(self.id+1))
 
     @property
     def paragraphs(self):
@@ -324,6 +329,21 @@ class Paragraph(object):
             things.append(nch)
         return things
 
+    def extract_mood_words(self):
+        """
+        Extract the mood/emotion of the paragraph using EMO-Lexicon
+        """
+        pass
+
+    def extract_mood_weights(self):
+        """
+        Extract normalized paragraph mood weights from h5 file
+        """
+        para_emotions = self.mood_weights.iloc[self.id]
+        norm = numpy.sum( para_emotions )
+        return dict(para_emotions/norm)
+
+
     def build_words_dict(self):
         """
         Extract main words from the paragraph.
@@ -349,6 +369,7 @@ class Paragraph(object):
             words_dict['things'][thing] += 1
         for verb in self.extract_activities():
             words_dict['activities'][verb] += 1
+        words_dict['moods'].append(self.extract_mood_weights()) 
         return words_dict
 
     # def sanitize_places_and_objects(self, freq_cut=100):
