@@ -164,7 +164,7 @@ class Doc(object):
                 for key in self._words:
                     self._words[key] += par.words[key]
             for key in self.words['people']:
-                if self.words['people'][key] > self.words['places'][key]:
+                if (2.5)*(self.words['people'][key]) > self.words['places'][key]:
                     del self.words['places'][key]
         return self._words
 
@@ -309,8 +309,7 @@ class Paragraph(object):
         include_types = ['LOC', 'GPE', 'FACILITY']
         for place in textacy.extract.named_entities(self.spacy_doc,
                                                 include_types=include_types):
-            if place.text != 'Hagrid':
-                places.append(place.text)
+            places.append(place.text)
         return places
 
     def extract_things(self):
