@@ -1,9 +1,35 @@
+import os
+import json
 import pickle
 import requests
 from PIL import Image
 import urllib
-from .keys import BING_API_KEY
+# from .keys import BING_API_KEY
 from .image import upload_image
+
+
+def get_secret():
+    """Access local store to load secrets."""
+    local = os.path.dirname(os.path.abspath(__file__))
+    root = os.path.sep.join(local.split(os.path.sep)[:3])
+    secret_pth = os.path.join(root, '.ssh', 'bing.json')
+    return secret_pth
+
+
+def load_secret():
+    """Load secrets from a local store.
+
+    Args:
+        server: str defining server
+
+    Returns:
+        dict: storing key: value secrets
+    """
+    pth = get_secret()
+    secret = json.load(open(pth))
+    return secret
+
+BING_API_KEY = load_secret()
 
 
 def search_bing_for_image(query):
