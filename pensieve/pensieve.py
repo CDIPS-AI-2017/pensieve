@@ -6,7 +6,7 @@ import string
 from .json_dump import dump_mem_to_json
 import json
 from collections import Counter
-import panda
+import pandas
 import numpy
 
 print('Loading spaCy...')
@@ -144,7 +144,7 @@ class Doc(object):
         self._words = None
         # Hardcoded path to book_emo.h5 file. Method to generate this file needs to be implemented
         # in extract_mood_words
-        self.mood_weights = panda.read_hdf('hp_corpus/book_emo.h5',key='book'+str(self.id+1))
+        self.mood_weights = pandas.read_hdf('hp_corpus/book_emo.h5',key='book'+str(self.id+1))
 
     @property
     def paragraphs(self):
