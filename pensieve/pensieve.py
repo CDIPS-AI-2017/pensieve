@@ -146,18 +146,18 @@ class Doc(object):
         if not self._paragraphs:
             print('Generating paragraphs for doc '+str(self.id))
             self._paragraphs = []
-            list = self.text.split('\n')
+            line_list = self.text.split('\n')
             i = 0
-            while i < len(list):
-                if len(list[i].strip()) == 0:
+            while i < len(line_list):
+                if len(line_list[i].strip()) == 0:
                     i += 1
                     continue
-                if len(list[i].split(' ')) >= 25:
-                    self._paragraphs.append(Paragraph(list[i], i, self))
+                if len(line_list[i].split(' ')) >= 25:
+                    self._paragraphs.append(Paragraph(line_list[i], i, self))
                 else:
                     chunk = ""
-                    while (i < len(list)) and (len(list[i].split(' ')) < 25 or list[i][0] == "'" or list[i][0] == '"'):
-                        chunk = chunk + "\n" + list[i]
+                    while (i < len(line_list)) and (len(line_list[i].split(' ')) < 25 or line_list[i][0] == "'" or line_list[i][0] == '"'):
+                        chunk = chunk + "\n" + line_list[i]
                         i += 1
                     self._paragraphs.append(Paragraph(chunk, i, self))
                     continue
