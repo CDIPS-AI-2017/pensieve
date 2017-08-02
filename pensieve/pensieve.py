@@ -8,6 +8,8 @@ from .find_images import search_bing_for_image, search_np_for_image
 import json
 from tqdm import tqdm
 from collections import Counter
+import pandas
+import numpy
 
 print('Loading spaCy...')
 NLP = spacy.load('en')
@@ -144,6 +146,9 @@ class Doc(object):
         self.text = open(path_to_text, 'r').read()
         self._paragraphs = None
         self._words = None
+        # Hardcoded path to book_emo.h5 file. Method to generate this file needs to be implemented
+        # in extract_mood_words
+        self.mood_weights = pandas.read_hdf('hp_corpus/book_emo.h5',key='book'+str(self.id+1))
 
     @property
     def paragraphs(self):
