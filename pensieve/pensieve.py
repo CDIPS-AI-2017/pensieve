@@ -322,12 +322,12 @@ class Paragraph(object):
         things = []
         for obj in textacy.extract.named_entities(self.spacy_doc,
                                                   include_types=include_types):
-            things.append(obj)
+            things.append(obj.text.strip())
         # Get noun chunks
         for nch in textacy.extract.noun_chunks(self.spacy_doc, drop_determiners=True):
             if len(nch) == 1 and nch[0].pos == spacy.parts_of_speech.PRON:
                 continue
-            things.append(nch)
+            things.append(nch.text.strip())
         return things
 
     def build_words_dict(self):
