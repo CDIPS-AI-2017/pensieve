@@ -163,6 +163,9 @@ class Doc(object):
             for par in self.paragraphs:
                 for key in self._words:
                     self._words[key] += par.words[key]
+            for key in self.words['people']:
+                if self.words['people'][key] > self.words['places'][key]:
+                    del self.words['places'][key]
         return self._words
 
     def find_character_paragraphs(self, char_name, density_cut=0.8):
@@ -287,6 +290,9 @@ class Paragraph(object):
                                                    include_types=['PERSON']):
             # Exclude words too short to be names and strange characters
             if len(name.text) < 3:
+                continue
+            # objects should not be people
+            if (name.doc[name.start - 1].text == 'the') or (name.doc[name.start - 1].text == 'a') or (name.doc[name.start - 1].text == 'an'):
                 continue
             # Handle possessives
             if name.text[-2] not in string.ascii_lowercase:
