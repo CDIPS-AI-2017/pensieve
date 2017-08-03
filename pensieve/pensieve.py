@@ -146,10 +146,25 @@ class Doc(object):
         if not self._paragraphs:
             print('Generating paragraphs for doc '+str(self.id))
             self._paragraphs = []
-            for i, p in enumerate(self.text.split('\n')):
-                if len(p.split(' ')) < 30:
+            line_list = self.text.split('\n')
+            myIterator = iter(enumerate(line_list))
+            tuple = next(myIterator, None)
+            while tuple is not None:
+                i, line = tuple
+                if len(line.strip()) == 0:
+                    pass
+                elif len(line.split(' ')) >= 25:
+                    self._paragraphs.append(Paragraph(line, i, self))
+                else:
+                    chunk = ""
+                    while (tuple is not None) and (len(line.split(' ')) < 25 or line[0] == "'" or line[0] == '"'):
+                        chunk = chunk + "\n" + line
+                        tuple = next(myIterator, None)
+                        if tuple is not None:
+                            i, line = tuple
+                    self._paragraphs.append(Paragraph(chunk, i, self))
                     continue
-                self._paragraphs.append(Paragraph(p, i, self))
+                tuple = next(myIterator, None)
         return self._paragraphs
 
     @property
@@ -164,8 +179,12 @@ class Doc(object):
                 for key in self._words:
                     self._words[key] += par.words[key]
             for key in self.words['people']:
+                # people are not places
                 if (2.5)*(self.words['people'][key]) > self.words['places'][key]:
                     del self.words['places'][key]
+                # people are not things
+                if self.words['people'][key] > 5:
+                    del self.words['things'][key]
         return self._words
 
     def find_character_paragraphs(self, char_name, density_cut=0.8):
