@@ -4,7 +4,9 @@ import os
 import textacy
 import string
 from .json_dump import dump_mem_to_json
+from .find_images import search_bing_for_image, search_np_for_image
 import json
+from tqdm import tqdm
 from collections import Counter
 
 print('Loading spaCy...')
@@ -57,7 +59,7 @@ class Corpus(object):
             docs.append(Doc(file_path, i, self))
         return docs
 
-    def find_character_paragraphs(self, char_name, density_cut):
+    def find_character_paragraphs(self, char_name, density_cut=0.8):
         """
         Find paragraphs in the corpus where character is mentioned
         heavily.
@@ -81,7 +83,7 @@ class Corpus(object):
         return char_pars
 
     def gather_corpus_memories(self, char_name, density_cut=0.8,
-                               n_verbs  = 3, save=None):
+                               n_verbs=3, save=None, get_img=False):
         """
         Collects memories from all character paragraphs in the corpus.
 
@@ -96,6 +98,8 @@ class Corpus(object):
             name_cut: like verb_cut, but for people, places, and things
             save: save mem JSON files to this path. If None, files are
                   not saved
+            get_img: get an image url (set to False by default to avoid
+                     using up all the API calls)
 
         Returns:
             memories: list of memories, ready to be put in DB
@@ -103,7 +107,7 @@ class Corpus(object):
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
         for par in char_pars:
-            mem_dict = par.gen_mem_dict(char_name, n_verbs)
+            mem_dict = par.gen_mem_dict(char_name, n_verbs, get_img=get_img)
             memories.append(dump_mem_to_json(mem_dict))
         if save is not None:
             if isinstance(char_name, str):
@@ -218,7 +222,7 @@ class Doc(object):
         return char_pars
 
     def gather_doc_memories(self, char_name, density_cut=0.8,
-                            n_verbs = 3, save=None):
+                            n_verbs=3, save=None, get_img=False):
         """
         Collects memories from character paragraphs.
 
@@ -232,20 +236,22 @@ class Doc(object):
             name_cut: like verb_cut, but for people, places, and things
             save: save mem JSON files to this path. If None, files are
                   not saved
+            get_img: get an image url (set to False by default to avoid
+                     using up all the API calls)
 
         Returns:
             memories: list of sanitized memories, ready to be put in DB
         """
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
-        for par in char_pars:
-            mem_dict = par.gen_mem_dict(char_name, n_verbs)
+        for par in tqdm(char_pars):
+            mem_dict = par.gen_mem_dict(char_name, n_verbs, get_img=get_img)
             memories.append(dump_mem_to_json(mem_dict))
         if save is not None:
             if isinstance(char_name, str):
                 filebase = char_name.replace(' ', '_').lower().strip()
             else:
-                filebase = '_'.join(char_name)
+                filebase = '_'.join(char_name)+'_book'+str(self.id)
                 filebase = filebase.replace(' ', '_').lower().strip()
             path = os.path.join(save, filebase+'.json')
             with open(path, 'w') as f:
@@ -348,6 +354,25 @@ class Paragraph(object):
             things.append(nch.text.strip())
         return things
 
+    def extract_img_url(self):
+        """
+        Use the keyterms from the text to get a relevant image.
+        The decisions behind this function can be found in the
+        image_search_query notebook
+        """
+        keyterms = textacy.keyterms.textrank(self.spacy_doc)
+        best_keyterm = None
+        for keyterm, rank in keyterms:
+            if keyterm.title() not in self.doc.words['people']:
+                best_keyterm = keyterm
+                break
+        try:
+            urls = search_np_for_image(best_keyterm)
+        except Exception as e:
+            urls = search_bing_for_image(best_keyterm)
+        img_url = urls[0]
+        return img_url
+
     def build_words_dict(self):
         """
         Extract main words from the paragraph.
@@ -375,67 +400,7 @@ class Paragraph(object):
             words_dict['activities'][verb] += 1
         return words_dict
 
-    # def sanitize_places_and_objects(self, freq_cut=100):
-    #     """
-    #     Get a sanitized version of paragraph places and objects.
-    #     Get places that don't appear in the most common doc names, and
-    #     objects that don't appear in the most common doc places.
-
-    #     NOTE: I'm not really sure what this function is actually doing...
-
-    #     Args:
-    #         freq_cut: frequency to define "commonness" within the doc
-
-    #     Returns:
-    #         places: sanitized place names
-    #         objects: sanitized object names
-    #     """
-    #     doc_names = dict(self.doc.words['names'].most_common(freq_cut))
-    #     doc_places = dict(self.doc.words['places'].most_common(freq_cut))
-    #     places = []
-    #     objects = []
-    #     for place in self.words['places']:
-    #         if place not in doc_names:
-    #             places.append(place)
-    #     for obj in self.words['objects']:
-    #         if obj not in doc_places and obj not in places:
-    #             objects.append(obj)
-    #     return places, objects
-
-    # def gen_mem_activity(self, verbs_cut=500):
-    #     """
-    #     Determine the key activities in a paragraph by removing
-    #     verbs commonly used in the doc
-
-    #     Args:
-    #         verbs_cut: frequency of verb in doc to cut on
-
-    #     Returns:
-    #         activities: list of key activity strings
-    #     """
-    #     activities = []
-    #     doc_verbs = dict(self.doc.words['verbs'].most_common(verbs_cut))
-    #     main_verbs = textacy.spacy_utils.get_main_verbs_of_sent(self.spacy_doc)
-    #     for verb in main_verbs:
-    #         if (verb.text in doc_verbs) and (doc_verbs[verb.text] < verbs_cut):
-    #             span = textacy.spacy_utils.get_span_for_verb_auxiliaries(verb)
-    #             complex_verb = self.spacy_doc[span[0]].text
-    #             span_end = 1
-    #             if textacy.spacy_utils.is_negated_verb(verb) is True:
-    #                 complex_verb = complex_verb+' not '
-    #                 span_end = 0
-    #             for a in range(span[0]+1, span[1]+span_end):
-    #                 complex_verb += " "+self.spacy_doc[span[1]].text
-    #             subjects = textacy.spacy_utils.get_subjects_of_verb(verb)
-    #             objects = textacy.spacy_utils.get_objects_of_verb(verb)
-    #             if len(subjects) > 0 and len(objects) > 0:
-    #                 for subject in subjects:
-    #                     for obj in objects:
-    #                         svo = [subject.text, complex_verb, obj.text]
-    #                         activities.append(' '.join(svo))
-    #     return activities
-
-    def gen_mem_dict(self, character, n_verbs):
+    def gen_mem_dict(self, character, n_verbs, get_img=False):
         """
         Determine the most important words of those collected.
 
@@ -443,6 +408,8 @@ class Paragraph(object):
             character: character name string or list of aliases
             verb_cut: frequency of verb in doc to cut on
             name_cut: frequency of name in doc to cut on
+            get_img: get an image url (set to False by default to avoid
+                     using up all the API calls)
 
         Returns:
             culled_output: dictionary of most important people, places,
@@ -457,14 +424,18 @@ class Paragraph(object):
         mem_places = self.extract_places()
         mem_things = self.extract_things()
         mem_activities = self.extract_activities(n_verbs)
+        if get_img:
+            mem_img_url = self.extract_img_url()
+        else:
+            mem_img_url = None
         culled_output = {'people': mem_people,
                          'places': mem_places,
                          'activities': mem_activities,
-                         'things': mem_things}
+                         'things': mem_things,
+                         'img_url': mem_img_url,
+                         'narrative': self.text}
         return culled_output
 
 if __name__ == '__main__':
-    book4 = Doc('/Users/samdixon/repos/cdips_data_science/pensieve/hp_corpus/book4.txt')
-    from pprint import pprint
-    for k, v in book4.words.items():
-        pprint({k: v.most_common(10)})
+    book4 = Doc('/Users/samdixon/repos/cdips_data_science/pensieve/hp_corpus/book4.txt', doc_id=4)
+    print(book4.gather_doc_memories(['Harry', 'Potter'], save='./'))
