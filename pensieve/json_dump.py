@@ -37,7 +37,7 @@ def dump_mem_to_json(mem_dict, save=None):
     for concept_type, concept_items in mem_dict.items():
         if concept_items is None:
             continue
-        if concept_type in ('mood', 'image_url', 'narrative'):
+        if concept_type in ('mood', 'image_url', 'activities'):
             continue
         for concept_item in concept_items:
             clean_text = concept_item.replace(' ', '_')
@@ -66,7 +66,7 @@ def dump_mem_to_json(mem_dict, save=None):
             concepts.append(concept)
     narrative = {'node': {'name': '',
                           'label': 'title',
-                          'text': mem_dict['narrative']},
+                          'text': mem_dict['activities']},
                  'relation': {'weight': 0.5}}
     mem = {'memory': '',
            'node': node,
