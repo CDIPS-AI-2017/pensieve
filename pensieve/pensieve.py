@@ -372,7 +372,21 @@ class Paragraph(object):
             things.append(nch.text.strip())
         return things
 
-    def extract_img_url(self):
+    def extract_mood_words(self):
+        """
+        Extract the mood/emotion of the paragraph using EMO-Lexicon
+        """
+        pass
+
+    def extract_mood_weights(self):
+        """
+        Extract normalized paragraph mood weights from h5 file
+        """
+        para_emotions = self.mood_weights.iloc[self.id]
+        norm = numpy.sum( para_emotions )
+        return dict(para_emotions/norm)
+
+      def extract_img_url(self):
         """
         Use the keyterms from the text to get a relevant image.
         The decisions behind this function can be found in the
@@ -421,6 +435,7 @@ class Paragraph(object):
         for verb in self.extract_activities():
             verb = verb.strip()
             words_dict['activities'][verb] += 1
+        words_dict['moods'].append(self.extract_mood_weights()) 
         return words_dict
 
     def gen_mem_dict(self, character, n_verbs, get_img=False):
