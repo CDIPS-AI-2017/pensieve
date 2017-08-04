@@ -294,12 +294,14 @@ class Paragraph(object):
     def extract_times(self):
         """
         Extract times mentioned in the text and add book time information
+        
+        Returns: List of strings representing times
         """
         times = []
         include_types = ['DATE', 'TIME', 'EVENT']
         for time in textacy.extract.named_entities(self.spacy_doc,
                                                    include_types=include_types):
-            times.append(time)
+            times.append(time.text)
         times.append('Book '+str(self.doc.id))
         times.append('Par. '+str(self.id))
         return times
@@ -307,6 +309,8 @@ class Paragraph(object):
     def extract_activities(self, n_verbs = 5):
         """
         Extract verbs in the paragraph
+        
+        Returns: List of strings representing verbs
         """
         verb_ranking = [(x, x.rank) for x in textacy.spacy_utils.get_main_verbs_of_sent(self.spacy_doc)]
         verbs = []
@@ -319,6 +323,8 @@ class Paragraph(object):
     def extract_people(self):
         """
         Extract names in paragraph
+        
+        Returns: List of strings representing people
         """
         names = []
         for name in textacy.extract.named_entities(self.spacy_doc,
@@ -339,6 +345,8 @@ class Paragraph(object):
     def extract_places(self):
         """
         Extract places in paragraph
+        
+        Returns: List of strings representing places
         """
         places = []
         include_types = ['LOC', 'GPE', 'FACILITY']
@@ -350,6 +358,8 @@ class Paragraph(object):
     def extract_things(self):
         """
         Extract things mentioned in paragraph
+        
+        Returns: List of strings representing things
         """
         # Get named objects
         include_types = ['ORG', 'NORP', 'WORK_OF_ART', 'PRODUCT']
