@@ -386,20 +386,25 @@ class Paragraph(object):
                       'things': Counter(),
                       'activities': Counter()}
         for time in self.extract_times():
+            time = time.strip()
             words_dict['times'][time] += 1
         for name in self.extract_people():
+            name = name.strip()
             words_dict['people'][name] += 1
         for place in self.extract_places():
+            place = place.strip()
             # Places are often misidentified as people
             if place in words_dict['people']:
                 continue
             words_dict['places'][place] += 1
         for thing in self.extract_things():
+            thing = thing.strip()
             # People are picked up when iterating over noun chunks
             if thing in words_dict['people']:
                 continue
             words_dict['things'][thing] += 1
         for verb in self.extract_activities():
+            verb = verb.strip()
             words_dict['activities'][verb] += 1
         return words_dict
 
