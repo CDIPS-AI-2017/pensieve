@@ -153,12 +153,14 @@ class Doc(object):
             line_list = self.text.split('\n')
             myIterator = iter(enumerate(line_list))
             tuple = next(myIterator, None)
+            j = 0
             while tuple is not None:
                 i, line = tuple
                 if len(line.strip()) == 0:
                     pass
                 elif len(line.split(' ')) >= 25:
-                    self._paragraphs.append(Paragraph(line, i, self))
+                    self._paragraphs.append(Paragraph(line, j, self))
+                    j += 1
                 else:
                     chunk = ""
                     while (tuple is not None) and (len(line.split(' ')) < 25 or line[0] == "'" or line[0] == '"'):
@@ -167,6 +169,7 @@ class Doc(object):
                         if tuple is not None:
                             i, line = tuple
                     self._paragraphs.append(Paragraph(chunk, i, self))
+                    j += 1
                     continue
                 tuple = next(myIterator, None)
         return self._paragraphs
