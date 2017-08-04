@@ -8,6 +8,9 @@ from .find_images import search_bing_for_image, search_np_for_image
 import json
 from tqdm import tqdm
 from collections import Counter
+from collections import defaultdict
+import pandas
+import numpy
 
 print('Loading spaCy...')
 NLP = spacy.load('en')
@@ -144,6 +147,10 @@ class Doc(object):
         self.text = open(path_to_text, 'r').read()
         self._paragraphs = None
         self._words = None
+        # Hardcoded path to book_emo.h5 file. Method to generate this file needs to be implemented
+        # in extract_mood_words
+        self.mood_weights = pandas.read_hdf('/Users/michaellomnitz/Documents/CDIPS-AI/pensieve/pensieve/book_emo.h5',key='book'+str(self.id+1))
+
 
     @property
     def paragraphs(self):
@@ -357,6 +364,23 @@ class Paragraph(object):
             things.append(nch.text.strip())
         return things
 
+    def extract_mood_words(self):
+        """
+        Extract the mood/emotion of the paragraph using EMO-Lexicon
+        """
+        
+        pass
+
+    def extract_mood_weights(self):
+        """
+        Extract normalized paragraph mood weights from h5 file
+        """
+        if self.id >= len(self.doc.mood_weights):
+            return []
+        para_emotions = self.doc.mood_weights.iloc[self.id]
+        norm = numpy.sum( para_emotions )
+        return dict(para_emotions/norm)
+
     def extract_img_url(self):
         """
         Use the keyterms from the text to get a relevant image.
@@ -384,7 +408,9 @@ class Paragraph(object):
                       'people': Counter(),
                       'places': Counter(),
                       'things': Counter(),
-                      'activities': Counter()}
+                      'activities': Counter(),
+                      'mood_weight': defaultdict()}
+
         for time in self.extract_times():
             time = time.strip()
             words_dict['times'][time] += 1
@@ -406,6 +432,7 @@ class Paragraph(object):
         for verb in self.extract_activities():
             verb = verb.strip()
             words_dict['activities'][verb] += 1
+        words_dict['mood_weight'].update(self.extract_mood_weights()) 
         return words_dict
 
     def gen_mem_dict(self, character, n_verbs, get_img=False):
