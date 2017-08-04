@@ -8,6 +8,7 @@ from .find_images import search_bing_for_image, search_np_for_image
 import json
 from tqdm import tqdm
 from collections import Counter
+from collections import defaultdict
 import pandas
 import numpy
 
@@ -56,8 +57,9 @@ class Corpus(object):
         file_list = os.listdir(self.corpus_dir)
         file_paths = [os.path.join(self.corpus_dir, f) for f in file_list]
         docs = []
-        for i, file_path in enumerate(file_paths):
-            print('Loading '+file_path)
+        for file_path in file_paths:
+            i = int( file_path[-5:-4] ) -1
+            print('Loading '+file_path, 'Book id ',i)
             docs.append(Doc(file_path, i, self))
         return docs
 
@@ -109,7 +111,7 @@ class Corpus(object):
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
         for par in char_pars:
-            mem_dict = par.gen_mem_dict(char_name, n_verbs, get_img=get_img)
+            mem_dict = par.gen_mem_dict(char_name, n_verbs, get_img=get_img)            
             memories.append(dump_mem_to_json(mem_dict))
         if save is not None:
             if isinstance(char_name, str):
@@ -149,6 +151,7 @@ class Doc(object):
         # Hardcoded path to book_emo.h5 file. Method to generate this file needs to be implemented
         # in extract_mood_words
         self.mood_weights = pandas.read_hdf('hp_corpus/book_emo.h5',key='book'+str(self.id+1))
+
 
     @property
     def paragraphs(self):
@@ -382,11 +385,14 @@ class Paragraph(object):
         """
         Extract normalized paragraph mood weights from h5 file
         """
-        para_emotions = self.mood_weights.iloc[self.id]
+        para_emotions = self.doc.mood_weights.iloc[self.id]
         norm = numpy.sum( para_emotions )
-        return dict(para_emotions/norm)
+        if norm == 0:
+            return para_emotions
+        else:
+            return dict(para_emotions/norm)
 
-      def extract_img_url(self):
+    def extract_img_url(self):
         """
         Use the keyterms from the text to get a relevant image.
         The decisions behind this function can be found in the
@@ -413,7 +419,9 @@ class Paragraph(object):
                       'people': Counter(),
                       'places': Counter(),
                       'things': Counter(),
-                      'activities': Counter()}
+                      'activities': Counter(),
+                      'mood_weight': defaultdict()}
+
         for time in self.extract_times():
             time = time.strip()
             words_dict['times'][time] += 1
@@ -435,7 +443,8 @@ class Paragraph(object):
         for verb in self.extract_activities():
             verb = verb.strip()
             words_dict['activities'][verb] += 1
-        words_dict['moods'].append(self.extract_mood_weights()) 
+        words_dict['mood_weight'].update(self.extract_mood_weights()) 
+        words_dict['mood_weight']['overall_weight'] = 0.5 #this implementantion is still pending
         return words_dict
 
     def gen_mem_dict(self, character, n_verbs, get_img=False):
@@ -462,6 +471,9 @@ class Paragraph(object):
         mem_places = self.extract_places()
         mem_things = self.extract_things()
         mem_activities = self.extract_activities(n_verbs)
+        mem_weights = defaultdict()
+        mem_weights.update( self.extract_mood_weights() )
+        mem_weights.update({'overall_weight': 0.5}) #still needs to be implemented
         if get_img:
             mem_img_url = self.extract_img_url()
         else:
@@ -470,6 +482,7 @@ class Paragraph(object):
                          'places': mem_places,
                          'activities': mem_activities,
                          'things': mem_things,
+                         'mood_weight':mem_weights,
                          'img_url': mem_img_url,
                          'narrative': self.text}
         return culled_output
