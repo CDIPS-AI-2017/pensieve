@@ -7,7 +7,7 @@ CONCEPT_MAP = {'people': 'Person',
                'things': 'Thing',
                'activities': 'Activity',
                'times': 'Time',
-               'moods': 'Mood'}
+               'mood_words': 'Mood'}
 
 
 def dump_mem_to_json(mem_dict, save=None):
