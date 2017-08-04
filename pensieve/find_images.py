@@ -1,22 +1,21 @@
 import os
 import json
-import pickle
 import requests
 from PIL import Image
 import urllib
-# from .keys import BING_API_KEY
 from .image import upload_image
+from requests_oauthlib import OAuth1
 
 
-def get_secret():
+def get_secret(service):
     """Access local store to load secrets."""
-    local = os.path.dirname(os.path.abspath(__file__))
+    local = os.getcwd()
     root = os.path.sep.join(local.split(os.path.sep)[:3])
-    secret_pth = os.path.join(root, '.ssh', 'bing.json')
+    secret_pth = os.path.join(root, '.ssh', '{}.json'.format(service))
     return secret_pth
 
 
-def load_secret():
+def load_secret(service):
     """Load secrets from a local store.
 
     Args:
@@ -25,12 +24,12 @@ def load_secret():
     Returns:
         dict: storing key: value secrets
     """
-    pth = get_secret()
+    pth = get_secret(service)
     secret = json.load(open(pth))
     return secret
 
-BING_API_KEY = load_secret()
-
+BING_API_KEY = load_secret('bing')
+NP_API_KEY, NP_API_SECRET = load_secret('noun_project')
 
 def search_bing_for_image(query):
     """
@@ -40,7 +39,7 @@ def search_bing_for_image(query):
         query: Image search query
 
     Returns:
-        results: List of image result JSON dicts
+        results: List of urls from results
     """
     search_params = {'q': query,
                      'mkt': 'en-us',
@@ -49,8 +48,26 @@ def search_bing_for_image(query):
     url = 'https://api.cognitive.microsoft.com/bing/v5.0/images/search'
     r = requests.get(url, params=search_params, headers=auth)
     results = r.json()['value']
-    return results
+    urls = [result['contentUrl'] for result in results]
+    return urls
 
+def search_np_for_image(query):
+    """
+    Perform a Noun Project image search.
+
+    Args:
+        query: Image search query
+
+    Returns:
+        results: List of image result JSON dicts
+    """
+    auth = OAuth1(NP_API_KEY, NP_API_SECRET)
+    endpoint = 'http://api.thenounproject.com/icons/{}'.format(query)
+    params = {'limit_to_public_domain': 1,
+              'limit': 5}
+    response = requests.get(endpoint, params=params, auth=auth)
+    urls = [icon['preview_url'] for icon in response.json()['icons']]
+    return urls
 
 def store_best(search_results, n=1):
     """

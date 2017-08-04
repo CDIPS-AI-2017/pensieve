@@ -6,7 +6,8 @@ CONCEPT_MAP = {'people': 'Person',
                'places': 'Place',
                'things': 'Thing',
                'activities': 'Activity',
-               'times': 'Time'}
+               'times': 'Time',
+               'mood_words': 'Mood'}
 
 
 def dump_mem_to_json(mem_dict, save=None):
@@ -26,18 +27,18 @@ def dump_mem_to_json(mem_dict, save=None):
             'iconURL': '',
             'created': '',
             'updated': ''}
-    relation = {'weight': 0.5,
-                'joy': 0.0,
-                'fear': 0.0,
-                'surprise': 0.0,
-                'sadness': 0.0,
-                'disgust': 0.0,
-                'anger': 0.0}
+    relation = {'weight': mem_dict['mood_weight']['overall_weight'],
+                'joy': mem_dict['mood_weight']['joy'],
+                'fear': mem_dict['mood_weight']['fear'],
+                'surprise': mem_dict['mood_weight']['surprise'],
+                'sadness': mem_dict['mood_weight']['sadness'],
+                'disgust': mem_dict['mood_weight']['disgust'],
+                'anger': mem_dict['mood_weight']['anger']}
     concepts = []
     for concept_type, concept_items in mem_dict.items():
         if concept_items is None:
             continue
-        if concept_type in ('mood', 'image_url', 'narrative'):
+        if concept_type in ('img_url', 'narrative', 'mood_weight'):
             continue
         for concept_item in concept_items:
             clean_text = concept_item.replace(' ', '_')
