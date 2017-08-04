@@ -168,7 +168,7 @@ class Doc(object):
                         tuple = next(myIterator, None)
                         if tuple is not None:
                             i, line = tuple
-                    self._paragraphs.append(Paragraph(chunk, i, self))
+                    self._paragraphs.append(Paragraph(chunk, j, self))
                     j += 1
                     continue
                 tuple = next(myIterator, None)
