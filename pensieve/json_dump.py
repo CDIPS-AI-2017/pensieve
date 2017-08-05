@@ -23,7 +23,7 @@ def dump_mem_to_json(mem_dict, save=None):
     """
     node = {'name': '',
             'label': '',
-            'imageURL': mem_dict.get('img_url', default=''),
+            'imageURL': mem_dict.get('img_url', ''),
             'iconURL': '',
             'created': '',
             'updated': ''}
@@ -34,7 +34,7 @@ def dump_mem_to_json(mem_dict, save=None):
                             'sadness': 0.0,
                             'disgust': 0.0,
                             'anger': 0.0}
-    relation = mem_dict.get('mood_weight', default=default_mood_weights)
+    relation = mem_dict.get('mood_weight', default_mood_weights)
     concepts = []
     for concept_type, concept_items in mem_dict.items():
         if concept_items is None:
@@ -80,4 +80,4 @@ def dump_mem_to_json(mem_dict, save=None):
         with open(os.path.abspath(save), 'w') as f:
             json.dump(mem, f)
 
-    return mem
+    return dict(mem)
