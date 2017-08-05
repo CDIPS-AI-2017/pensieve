@@ -8,9 +8,8 @@ from .find_images import search_bing_for_image, search_np_for_image
 import json
 from tqdm import tqdm
 from collections import Counter
-from collections import defaultdict
 import pandas
-import numpy
+import numpy as np
 
 print('Loading spaCy...')
 NLP = spacy.load('en')
@@ -18,7 +17,7 @@ NLP = spacy.load('en')
 
 class Corpus(object):
 
-    def __init__(self, corpus_dir=None):
+    def __init__(self, corpus_dir=None, mood_dir='mood_files'):
         """
         Corpus to extract mems from
 
@@ -30,6 +29,7 @@ class Corpus(object):
             paragraphs: List of Paragraph objects from corpus
         """
         self.corpus_dir = os.path.abspath(corpus_dir)
+        self.mood_dir = os.path.abspath(mood_dir)
         self._docs = None
         self._paragraphs = None
 
@@ -58,8 +58,8 @@ class Corpus(object):
         file_paths = [os.path.join(self.corpus_dir, f) for f in file_list]
         docs = []
         for file_path in file_paths:
-            i = int( file_path[-5:-4] ) -1
-            print('Loading '+file_path, 'Book id ',i)
+            i = int(file_path[-5:-4])
+            print('Loading '+file_path)
             docs.append(Doc(file_path, i, self))
         return docs
 
@@ -109,19 +109,14 @@ class Corpus(object):
             memories: list of memories, ready to be put in DB
         """
         memories = []
-        char_pars = self.find_character_paragraphs(char_name, density_cut)
-        for par in char_pars:
-            mem_dict = par.gen_mem_dict(char_name, n_verbs, get_img=get_img)            
-            memories.append(dump_mem_to_json(mem_dict))
-        if save is not None:
-            if isinstance(char_name, str):
-                filebase = char_name.replace(' ', '_').lower().strip()
-            else:
-                filebase = '_'.join(char_name)
-                filebase = filebase.replace(' ', '_').lower().strip()
-            path = os.path.join(save, filebase+'.json')
-            with open(path) as f:
-                json.dump(memories, f)
+        for doc in self.docs:
+            doc_mems = doc.gather_doc_memories(char_name,
+                                               density_cut=density_cut,
+                                               n_verbs=n_verbs,
+                                               save=save,
+                                               get_img=get_img)
+            for mem in doc_mems:
+                memories.append(mem)
         return memories
 
 
@@ -145,18 +140,21 @@ class Doc(object):
         self.path_to_text = path_to_text
         self.id = doc_id
         self.corpus = corpus
+        self.mood_dir = corpus.mood_dir
         self.text = open(path_to_text, 'r').read()
         self._paragraphs = None
         self._words = None
-        # Hardcoded path to book_emo.h5 file. Method to generate this file needs to be implemented
-        # in extract_mood_words
-        self.mood_weights = pandas.read_hdf('C:/Users/jingjing/Desktop/cdips-ai/pensieve/pensieve/book_emo.h5',key='book'+str(self.id+1))
+        self.mood_weights = pandas.read_hdf(os.path.join(self.mood_dir, 'book_emo_v2.h5'),
+                                            key='book'+str(self.id))
+        self.mood_words = pandas.read_hdf(os.path.join(self.mood_dir, 'book_moo_v2.h5'),
+                                          key='book'+str(self.id))
+
 
 
     @property
     def paragraphs(self):
         if not self._paragraphs:
-            print('Generating paragraphs for doc '+str(self.id))
+            print('Generating memories for doc '+str(self.id))
             self._paragraphs = []
             line_list = self.text.split('\n')
             myIterator = iter(enumerate(line_list))
@@ -255,9 +253,11 @@ class Doc(object):
         """
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
-        for par in tqdm(char_pars):
+        moody_pars = [par for par in char_pars if par.words['mood_weight']['weight'] > 0]
+        for par in tqdm(moody_pars):
             mem_dict = par.gen_mem_dict(char_name, n_verbs, get_img=get_img)
-            memories.append(dump_mem_to_json(mem_dict))
+            json_mem = dump_mem_to_json(mem_dict)
+            memories.append(json_mem)
         if save is not None:
             if isinstance(char_name, str):
                 filebase = char_name.replace(' ', '_').lower().strip()
@@ -379,18 +379,25 @@ class Paragraph(object):
         """
         Extract the mood/emotion of the paragraph using EMO-Lexicon
         """
-        pass
+        para_moods = self.doc.mood_words.iloc[self.id].dropna()
+        return list(para_moods)
 
     def extract_mood_weights(self):
         """
         Extract normalized paragraph mood weights from h5 file
         """
         para_emotions = self.doc.mood_weights.iloc[self.id]
-        norm = numpy.sum( para_emotions )
-        if norm == 0:
-            return para_emotions
+        norm = np.sum(para_emotions)
+        weight = np.log(norm+1.)
+        weight /= np.max(np.log(self.doc.mood_weights.T.sum()+1.))
+        if norm == 0.:
+            mood_weight_dict = dict(para_emotions)
+            mood_weight_dict['weight'] = weight
+            return mood_weight_dict
         else:
-            return dict(para_emotions/norm)
+            mood_weight_dict = dict(para_emotions/norm)
+            mood_weight_dict['weight'] = weight
+            return mood_weight_dict
 
     def extract_img_url(self):
         """
@@ -420,7 +427,8 @@ class Paragraph(object):
                       'places': Counter(),
                       'things': Counter(),
                       'activities': Counter(),
-                      'mood_weight': defaultdict()}
+                      'mood_words': Counter(),
+                      'mood_weight': {}}
 
         for time in self.extract_times():
             time = time.strip()
@@ -443,8 +451,10 @@ class Paragraph(object):
         for verb in self.extract_activities():
             verb = verb.strip()
             words_dict['activities'][verb] += 1
-        words_dict['mood_weight'].update(self.extract_mood_weights()) 
-        words_dict['mood_weight']['overall_weight'] = 0.5 #this implementantion is still pending
+        for mood in self.extract_mood_words():
+            mood = mood.strip()
+            words_dict['mood_words'][mood] += 1
+        words_dict['mood_weight'] = self.extract_mood_weights()
         return words_dict
 
     def gen_mem_dict(self, character, n_verbs, get_img=False):
@@ -471,18 +481,18 @@ class Paragraph(object):
         mem_places = self.extract_places()
         mem_things = self.extract_things()
         mem_activities = self.extract_activities(n_verbs)
-        mem_weights = defaultdict()
-        mem_weights.update( self.extract_mood_weights() )
-        mem_weights.update({'overall_weight': 0.5}) #still needs to be implemented
+        mem_weights = self.extract_mood_weights()
+        mem_moods = self.extract_mood_words()
         if get_img:
             mem_img_url = self.extract_img_url()
         else:
-            mem_img_url = None
+            mem_img_url = ''
         culled_output = {'people': mem_people,
                          'places': mem_places,
                          'activities': mem_activities,
                          'things': mem_things,
-                         'mood_weight':mem_weights,
+                         'mood_words': mem_moods,
+                         'mood_weight': mem_weights,
                          'img_url': mem_img_url,
                          'narrative': self.text}
         return culled_output
