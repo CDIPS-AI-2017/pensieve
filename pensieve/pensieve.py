@@ -379,7 +379,7 @@ class Paragraph(object):
         Extract the mood/emotion of the paragraph using EMO-Lexicon
         """
         para_moods = self.doc.mood_words.iloc[self.id].dropna()
-        return para_moods
+        return list(para_moods)
 
     def extract_mood_weights(self):
         """
@@ -426,6 +426,7 @@ class Paragraph(object):
                       'places': Counter(),
                       'things': Counter(),
                       'activities': Counter(),
+                      'mood_words': Counter(),
                       'mood_weight': {}}
 
         for time in self.extract_times():
@@ -449,6 +450,9 @@ class Paragraph(object):
         for verb in self.extract_activities():
             verb = verb.strip()
             words_dict['activities'][verb] += 1
+        for mood in self.extract_mood_words():
+            mood = mood.strip()
+            words_dict['mood_words'][mood] += 1
         words_dict['mood_weight'] = self.extract_mood_weights()
         return words_dict
 
@@ -477,6 +481,7 @@ class Paragraph(object):
         mem_things = self.extract_things()
         mem_activities = self.extract_activities(n_verbs)
         mem_weights = self.extract_mood_weights()
+        mem_moods = self.extract_mood_words()
         if get_img:
             mem_img_url = self.extract_img_url()
         else:
@@ -485,7 +490,8 @@ class Paragraph(object):
                          'places': mem_places,
                          'activities': mem_activities,
                          'things': mem_things,
-                         'mood_weight':mem_weights,
+                         'mood_words': mem_moods,
+                         'mood_weight': mem_weights,
                          'img_url': mem_img_url,
                          'narrative': self.text}
         return culled_output
