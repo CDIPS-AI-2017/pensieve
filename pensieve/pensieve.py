@@ -150,8 +150,8 @@ class Doc(object):
         self._words = None
         # Hardcoded path to book_emo.h5 file. Method to generate this file needs to be implemented
         # in extract_mood_words
-        self.mood_weights = pandas.read_hdf('hp_corpus/book_emo.h5',key='book'+str(self.id+1))
-        self.mood_words = pandas.read_hdf('hp_corpus/book_moo.h5',key='book'+str(self.id+1))
+        self.mood_weights = pandas.read_hdf('mood_files/book_emo.h5',key='book'+str(self.id+1))
+        self.mood_words = pandas.read_hdf('mood_files/book_moo.h5',key='book'+str(self.id+1))
 
 
     @property
