@@ -23,17 +23,18 @@ def dump_mem_to_json(mem_dict, save=None):
     """
     node = {'name': '',
             'label': '',
-            'imageURL': mem_dict['img_url'],
+            'imageURL': mem_dict.get('img_url', default=''),
             'iconURL': '',
             'created': '',
             'updated': ''}
-    relation = {'weight': mem_dict['mood_weight']['overall_weight'],
-                'joy': mem_dict['mood_weight']['joy'],
-                'fear': mem_dict['mood_weight']['fear'],
-                'surprise': mem_dict['mood_weight']['surprise'],
-                'sadness': mem_dict['mood_weight']['sadness'],
-                'disgust': mem_dict['mood_weight']['disgust'],
-                'anger': mem_dict['mood_weight']['anger']}
+    default_mood_weights = {'weight': 0.5,
+                            'joy': 0.0,
+                            'fear': 0.0,
+                            'surprise': 0.0,
+                            'sadness': 0.0,
+                            'disgust': 0.0,
+                            'anger': 0.0}
+    relation = mem_dict.get('mood_weight', default=default_mood_weights)
     concepts = []
     for concept_type, concept_items in mem_dict.items():
         if concept_items is None:
