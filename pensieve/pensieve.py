@@ -127,7 +127,7 @@ class Corpus(object):
 
 class Doc(object):
 
-    def __init__(self, path_to_text, doc_id=None, corpus=None):
+    def __init__(self, path_to_text, doc_id=None, corpus=None, mood_dir='mood_files'):
         """
         Document level object
 
@@ -148,10 +148,10 @@ class Doc(object):
         self.text = open(path_to_text, 'r').read()
         self._paragraphs = None
         self._words = None
-        # Hardcoded path to book_emo.h5 file. Method to generate this file needs to be implemented
-        # in extract_mood_words
-        self.mood_weights = pandas.read_hdf('mood_files/book_emo.h5',key='book'+str(self.id+1))
-        self.mood_words = pandas.read_hdf('mood_files/book_moo.h5',key='book'+str(self.id+1))
+        self.mood_weights = pandas.read_hdf(os.path.join(mood_dir, 'book_emo.h5'),
+                                            key='book'+str(self.id+1))
+        self.mood_words = pandas.read_hdf(os.path.join(mood_dir, 'book_moo.h5'),
+                                          key='book'+str(self.id+1))
 
 
     @property
