@@ -9,7 +9,7 @@ import json
 from tqdm import tqdm
 from collections import Counter
 import pandas
-import numpy
+import numpy as np
 
 print('Loading spaCy...')
 NLP = spacy.load('en')
@@ -252,7 +252,8 @@ class Doc(object):
         """
         memories = []
         char_pars = self.find_character_paragraphs(char_name, density_cut)
-        for par in tqdm(char_pars):
+        moody_pars = [par for par in char_pars if par.words['mood_weight']['weight'] > 0]
+        for par in tqdm(moody_pars):
             mem_dict = par.gen_mem_dict(char_name, n_verbs, get_img=get_img)
             json_mem = dump_mem_to_json(mem_dict)
             memories.append(json_mem)
@@ -377,7 +378,7 @@ class Paragraph(object):
         """
         Extract the mood/emotion of the paragraph using EMO-Lexicon
         """
-        para_moods = self.doc.wood_words.iloc[self.id].dropna()
+        para_moods = self.doc.mood_words.iloc[self.id].dropna()
         return para_moods
 
     def extract_mood_weights(self):
@@ -385,11 +386,17 @@ class Paragraph(object):
         Extract normalized paragraph mood weights from h5 file
         """
         para_emotions = self.doc.mood_weights.iloc[self.id]
-        norm = numpy.sum(para_emotions)
+        norm = np.sum(para_emotions)
+        weight = np.log(norm+1.)
+        weight /= np.max(np.log(self.doc.mood_weights.T.sum()+1.))
         if norm == 0.:
-            return para_emotions
+            mood_weight_dict = dict(para_emotions)
+            mood_weight_dict['weight'] = weight
+            return mood_weight_dict
         else:
-            return dict(para_emotions/norm)
+            mood_weight_dict = dict(para_emotions/norm)
+            mood_weight_dict['weight'] = weight
+            return mood_weight_dict
 
     def extract_img_url(self):
         """
@@ -443,7 +450,6 @@ class Paragraph(object):
             verb = verb.strip()
             words_dict['activities'][verb] += 1
         words_dict['mood_weight'] = self.extract_mood_weights()
-        words_dict['mood_weight']['weight'] = 0.5
         return words_dict
 
     def gen_mem_dict(self, character, n_verbs, get_img=False):
@@ -471,12 +477,10 @@ class Paragraph(object):
         mem_things = self.extract_things()
         mem_activities = self.extract_activities(n_verbs)
         mem_weights = self.extract_mood_weights()
-        mem_weights['weight'] = 0.5  #still needs to be implemented
-        print(type(mem_weights))
         if get_img:
             mem_img_url = self.extract_img_url()
         else:
-            mem_img_url = None
+            mem_img_url = ''
         culled_output = {'people': mem_people,
                          'places': mem_places,
                          'activities': mem_activities,
