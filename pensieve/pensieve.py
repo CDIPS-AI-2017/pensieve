@@ -151,6 +151,7 @@ class Doc(object):
         # Hardcoded path to book_emo.h5 file. Method to generate this file needs to be implemented
         # in extract_mood_words
         self.mood_weights = pandas.read_hdf('hp_corpus/book_emo.h5',key='book'+str(self.id+1))
+        self.mood_words = pandas.read_hdf('hp_corpus/book_moo.h5',key='book'+str(self.id+1))
 
 
     @property
@@ -379,6 +380,8 @@ class Paragraph(object):
         """
         Extract the mood/emotion of the paragraph using EMO-Lexicon
         """
+        para_moods = self.doc.wood_words.iloc[self.id].dropna()
+        return para_moods
         pass
 
     def extract_mood_weights(self):
